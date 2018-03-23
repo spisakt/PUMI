@@ -1,6 +1,8 @@
 # PUMI
 Pypelining Using Modular Inventory
 
+https://github.com/spisakt/PUMI/wiki
+
 *** Under development ***
 
 Requires:
