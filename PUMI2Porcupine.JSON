@@ -1,0 +1,165 @@
+{
+  "nodes": [
+    {
+      "category": [
+        "Custom", 
+        "trim_func"
+      ], 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "stop_idx"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "stop_idx", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "in_files"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "in_files", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "start_idx"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "start_idx", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "startidx"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "startidx", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "stopidx"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "stopidx", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function GetIdx", 
+            "argument": {
+              "import": "import trim_func", 
+              "name": "trim_func.GetIdx"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, trim_func"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "trim_func.GetIdx"
+      }
+    }, 
+    {
+      "category": [
+        "Custom", 
+        "trim_func"
+      ], 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "in_file"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "in_file", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "TR"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "TR", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function GetTR", 
+            "argument": {
+              "import": "import trim_func", 
+              "name": "trim_func.GetTR"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, trim_func"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "trim_func.GetTR"
+      }
+    }
+  ]
+}

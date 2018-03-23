@@ -1,0 +1,1029 @@
+{
+  "nodes": [
+    {
+      "category": [
+        "PUMI", 
+        "func_preproc"
+      ], 
+      "import": "import PUMI.func_preproc.SliceTimer as SliceTimer", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "SinkDir"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "SinkDir", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "func"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "func", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "SinkTag"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "SinkTag", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "slicetiming_txt"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "slicetiming_txt", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "func_slicetimed"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "func_slicetimed", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "TR"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "TR", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function WorkFlow", 
+            "argument": {
+              "import": "import PUMI.func_preproc.SliceTimer as SliceTimer", 
+              "name": "SliceTimer.WorkFlow"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, SliceTimer"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "SliceTimer.WorkFlow"
+      }
+    }, 
+    {
+      "category": [
+        "PUMI", 
+        "func_preproc"
+      ], 
+      "import": "import PUMI.func_preproc.FieldMapper as FieldMapper", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "dwell_time"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "dwell_time", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "unwarp_direction"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "unwarp_direction", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "magnitude"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "magnitude", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "func"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "func", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "phase"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "phase", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "TE1"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "TE1", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "TE2"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "TE2", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "func_fieldmapcorr"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "func_fieldmapcorr", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "fieldmap"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "fieldmap", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function WorkFlow", 
+            "argument": {
+              "import": "import PUMI.func_preproc.FieldMapper as FieldMapper", 
+              "name": "FieldMapper.WorkFlow"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, FieldMapper"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "FieldMapper.WorkFlow"
+      }
+    }, 
+    {
+      "category": [
+        "PUMI", 
+        "func_preproc", 
+        "slicetime"
+      ], 
+      "import": "import PUMI.func_preproc.slicetime.slicetime_get as slicetime_get", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "in_files"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "in_files", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "slicetimes"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "slicetimes", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function Timing", 
+            "argument": {
+              "import": "import PUMI.func_preproc.slicetime.slicetime_get as slicetime_get", 
+              "name": "slicetime_get.Timing"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, slicetime_get"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "slicetime_get.Timing"
+      }
+    }, 
+    {
+      "category": [
+        "PUMI", 
+        "func_preproc", 
+        "info"
+      ], 
+      "import": "import PUMI.func_preproc.info.info_get as info_get", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "in_file"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "in_file", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "TR"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "TR", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function TR", 
+            "argument": {
+              "import": "import PUMI.func_preproc.info.info_get as info_get", 
+              "name": "info_get.TR"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, info_get"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "info_get.TR"
+      }
+    }, 
+    {
+      "category": [
+        "PUMI", 
+        "func_preproc", 
+        "info"
+      ], 
+      "import": "import PUMI.func_preproc.info.info_get as info_get", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "stop_idx"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "stop_idx", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "in_files"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "in_files", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "start_idx"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "start_idx", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "startidx"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "startidx", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "stopidx"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "stopidx", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function tMinMax", 
+            "argument": {
+              "import": "import PUMI.func_preproc.info.info_get as info_get", 
+              "name": "info_get.tMinMax"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, info_get"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "info_get.tMinMax"
+      }
+    }, 
+    {
+      "category": [
+        "PUMI", 
+        "utils"
+      ], 
+      "import": "import PUMI.utils.utils_convert as utils_convert", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "float"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "float", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "str"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "str", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function Float2Str", 
+            "argument": {
+              "import": "import PUMI.utils.utils_convert as utils_convert", 
+              "name": "utils_convert.Float2Str"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, utils_convert"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "utils_convert.Float2Str"
+      }
+    }, 
+    {
+      "category": [
+        "PUMI", 
+        "utils"
+      ], 
+      "import": "import PUMI.utils.utils_convert as utils_convert", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "keys"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "keys", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "vals"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "vals", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "dict"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "dict", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function JoinVal2Dict", 
+            "argument": {
+              "import": "import PUMI.utils.utils_convert as utils_convert", 
+              "name": "utils_convert.JoinVal2Dict"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, utils_convert"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "utils_convert.JoinVal2Dict"
+      }
+    }, 
+    {
+      "category": [
+        "PUMI", 
+        "utils"
+      ], 
+      "import": "import PUMI.utils.utils_convert as utils_convert", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "str"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "str", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "float"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "float", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function Str2Float", 
+            "argument": {
+              "import": "import PUMI.utils.utils_convert as utils_convert", 
+              "name": "utils_convert.Str2Float"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, utils_convert"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "utils_convert.Str2Float"
+      }
+    }, 
+    {
+      "category": [
+        "PUMI", 
+        "utils"
+      ], 
+      "import": "import PUMI.utils.utils_convert as utils_convert", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "val"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "val", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "dict"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "dict", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function Val2Dict", 
+            "argument": {
+              "import": "import PUMI.utils.utils_convert as utils_convert", 
+              "name": "utils_convert.Val2Dict"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, utils_convert"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "utils_convert.Val2Dict"
+      }
+    }, 
+    {
+      "category": [
+        "PUMI", 
+        "utils"
+      ], 
+      "import": "import PUMI.utils.utils_math as utils_math", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "x"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "x", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "abs"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "abs", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function Abs", 
+            "argument": {
+              "import": "import PUMI.utils.utils_math as utils_math", 
+              "name": "utils_math.Abs"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, utils_math"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "utils_math.Abs"
+      }
+    }, 
+    {
+      "category": [
+        "PUMI", 
+        "utils"
+      ], 
+      "import": "import PUMI.utils.utils_math as utils_math", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "a"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "a", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "b"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "b", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "sum"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "sum", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function AddTwo", 
+            "argument": {
+              "import": "import PUMI.utils.utils_math as utils_math", 
+              "name": "utils_math.AddTwo"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, utils_math"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "utils_math.AddTwo"
+      }
+    }, 
+    {
+      "category": [
+        "PUMI", 
+        "utils"
+      ], 
+      "import": "import PUMI.utils.utils_math as utils_math", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "a"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "a", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "b"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "b", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "dif"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "dif", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function SubTwo", 
+            "argument": {
+              "import": "import PUMI.utils.utils_math as utils_math", 
+              "name": "utils_math.SubTwo"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, utils_math"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "utils_math.SubTwo"
+      }
+    }, 
+    {
+      "category": [
+        "PUMI", 
+        "utils"
+      ], 
+      "import": "import PUMI.utils.utils_math as utils_math", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "in_list"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "in_list", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "sum"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "sum", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function SumList", 
+            "argument": {
+              "import": "import PUMI.utils.utils_math as utils_math", 
+              "name": "utils_math.SumList"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, utils_math"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "utils_math.SumList"
+      }
+    }
+  ]
+}
