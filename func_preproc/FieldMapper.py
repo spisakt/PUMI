@@ -1,10 +1,15 @@
 from nipype.interfaces.utility import Function
 
-def fieldmapper(func, magnitude, phase, TE1, TE2, dwell_time, unwarp_direction="y-", SinkDir=".", SinkTag="func_fieldmapcorr"):
+
+def fieldmapper(func, magnitude, phase, TE1, TE2, dwell_time, unwarp_direction="y-",
+                SinkDir=".", SinkTag="func_fieldmapcorr"):
     import psutil
     import json
+    import os
 
-    SinkDir = SinkDir + "/" + SinkTag
+    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    if not os.path.exists(SinkDir):
+        os.makedirs(SinkDir)
     ###########################################
     # HERE INSERT PORCUPINE GENERATED CODE
     # MUST DEFINE
@@ -78,7 +83,7 @@ def fieldmapper(func, magnitude, phase, TE1, TE2, dwell_time, unwarp_direction="
     # Generic datasink module to store structured outputs
     NodeHash_608001eb9bc0 = pe.Node(interface=io.DataSink(), name='NodeName_608001eb9bc0')
     NodeHash_608001eb9bc0.inputs.base_directory = SinkDir
-    NodeHash_608001eb9bc0.inputs.regexp_substitutions = [("fieldmap/_NodeName_.{13}", "")]
+    NodeHash_608001eb9bc0.inputs.regexp_substitutions = [("_NodeName_.{13}", "")]
 
     # Very simple frontend for storing values into a JSON file.
     NodeHash_6000024a5820 = pe.Node(interface=io.JSONFileSink(), name='NodeName_6000024a5820')
@@ -108,7 +113,7 @@ def fieldmapper(func, magnitude, phase, TE1, TE2, dwell_time, unwarp_direction="
 
     # Run the workflow
     plugin = 'MultiProc'  # adjust your desired plugin here
-    plugin_args = {'n_procs': 1}  # adjust to your number of cores
+    plugin_args = {'n_procs': psutil.cpu_count()}  # adjust to your number of cores
     analysisflow.write_graph(graph2use='flat', format='png', simple_form=False)
     analysisflow.run(plugin=plugin, plugin_args=plugin_args)
 
@@ -118,11 +123,12 @@ def fieldmapper(func, magnitude, phase, TE1, TE2, dwell_time, unwarp_direction="
 
     #load and return json
     # you have to be aware the keys of the json map here
+
     ret = json.load(open(OutJSON))
     return ret['func_fieldmapcorr'], ret['fieldmap']
 
 
-WorkFlow = Function(input_names=['func', 'magnitude', 'phase', 'TE1', 'TE2', 'dwell_time', 'unwarp_direction'],
+WorkFlow = Function(input_names=['func', 'magnitude', 'phase', 'TE1', 'TE2', 'dwell_time', 'unwarp_direction', 'SinkDir', 'SinkTag'],
                     output_names=['func_fieldmapcorr', 'fieldmap'],
                     function=fieldmapper)
 

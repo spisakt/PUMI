@@ -50,7 +50,7 @@ NodeHash_6000010a5b80.inputs.regexp_substitutions = [("func_fieldmapcorr/_NodeNa
 #Generic datasink module to store structured outputs
 NodeHash_608001eb9bc0 = pe.Node(interface = io.DataSink(), name = 'NodeName_608001eb9bc0')
 NodeHash_608001eb9bc0.inputs.base_directory = SinkDir
-NodeHash_608001eb9bc0.inputs.regexp_substitutions = [("fieldmap/_NodeName_.{13}", "")]
+NodeHash_608001eb9bc0.inputs.regexp_substitutions = [("_NodeName_.{13}", "")]
 
 #Very simple frontend for storing values into a JSON file.
 NodeHash_6000024a5820 = pe.Node(interface = io.JSONFileSink(), name = 'NodeName_6000024a5820')

@@ -160,6 +160,21 @@
           "code": [
             {
               "argument": {
+                "name": "SinkDir"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "SinkDir", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
                 "name": "magnitude"
               }, 
               "language": "Nipype"
@@ -226,6 +241,21 @@
             }
           ], 
           "name": "TE2", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "SinkTag"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "SinkTag", 
           "editable": true, 
           "visible": true, 
           "output": false, 

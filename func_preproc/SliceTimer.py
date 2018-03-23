@@ -3,8 +3,11 @@ from nipype.interfaces.utility import Function
 def slicetimer(func, slicetiming_txt, SinkDir=".", SinkTag="func_slicetimed"):
     import psutil
     import json
+    import os
 
-    SinkDir = SinkDir + "/" + SinkTag
+    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    if not os.path.exists(SinkDir):
+        os.makedirs(SinkDir)
     ###########################################
     # HERE INSERT PORCUPINE GENERATED CODE
     # MUST DEFINE
@@ -100,7 +103,7 @@ def slicetimer(func, slicetiming_txt, SinkDir=".", SinkTag="func_slicetimed"):
 
     # Run the workflow
     plugin = 'MultiProc'  # adjust your desired plugin here
-    plugin_args = {'n_procs': 1}  # adjust to your number of cores
+    plugin_args = {'n_procs': psutil.cpu_count()}  # adjust to your number of cores
     analysisflow.write_graph(graph2use='flat', format='png', simple_form=False)
     analysisflow.run(plugin=plugin, plugin_args=plugin_args)
 
