@@ -3,12 +3,12 @@
 
 Nipype-based, Porcupine-compatible neuroimaging modular pipelines.
 
+*** **Under development** ***
+
 Currtent focus:
 - resting-state analysis
 
 https://github.com/spisakt/PUMI/wiki
-
-*** **Under development** ***
 
 Requires:
 - nipype (>=1.0.1)
