@@ -1,5 +1,5 @@
 # PUMI
-**Pypelines Using Modular Inventory
+**Pypelines Using Modular Inventory**
 
 Nipype-based, Porcupine-compatible neuroimaging modular pipelines.
 
