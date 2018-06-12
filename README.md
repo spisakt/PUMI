@@ -11,7 +11,11 @@ https://github.com/spisakt/PUMI/wiki
 *** **Under development** ***
 
 Requires:
-nipype (>=1.0.1)
+- nipype (>=1.0.1)
+
+3rd party neuroimaging software
+- FSL
+- AFNI
 
 Recommends:
-porcupine (>=1.4.0)
+- porcupine (>=1.4.0)
