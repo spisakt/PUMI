@@ -1,5 +1,9 @@
 # PUMI
-Pypelining Using Modular Inventory
+Pypelines Using Modular Inventory
+
+Nipype-based, Porcupine-compatible neuroimaging modular pipelines.
+Currtent focus:
+- resting-state analysis
 
 https://github.com/spisakt/PUMI/wiki
 
