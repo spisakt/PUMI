@@ -80,7 +80,7 @@ def bbr_workflow(SinkDir=".",
     bbreg_func_to_anat.inputs.dof = 6
 
     # Define outputs of the workflow
-    #TODO inverted transformation matrix is necessery
+    #TODO inverted transformation matrix node is necessery
     outputspec = pe.Node(utility.IdentityInterface(fields=['func_to_anat_linear_xfm',
                                                            'func_to_anat_linear_xfm_nobbreg'
                                                         # 'func_to_mni_linear_xfm',

@@ -36,7 +36,7 @@ def nuissremov_workflow(SinkDir=".",
 
     # Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=['in_file',
-                                                          'design_file']),
+                                                              'design_file']),
                         name='inputspec')
 
     # Perform the nuissance regression

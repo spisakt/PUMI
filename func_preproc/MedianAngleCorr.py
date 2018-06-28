@@ -89,7 +89,7 @@ def median_angle_correct(target_angle_deg, realigned_file):
 
     return corrected_file, angles_file
 
-def create_median_angle_correction(SinkDir=".",
+def mac_workflow(SinkDir=".",
         SinkTag="func_preproc",
         WorkingDirectory="."):
     """
@@ -165,14 +165,18 @@ def create_median_angle_correction(SinkDir=".",
         :width: 500
 
     """
+    import os
     import nipype.pipeline.engine as pe
     import nipype.interfaces.utility as utility
 
+    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    if not os.path.exists(SinkDir):
+        os.makedirs(SinkDir)
 
-    inputspec = pe.Node(utility.IdentityInterface(fields=['subject',
+    inputspec = pe.Node(utility.IdentityInterface(fields=['realigned_file',
                                                        'target_angle']),
                         name='inputspec')
-    outputspec = pe.Node(utility.IdentityInterface(fields=['subject',
+    outputspec = pe.Node(utility.IdentityInterface(fields=['final_func',
                                                         'pc_angles']),
                          name='outputspec')
 
@@ -182,14 +186,16 @@ def create_median_angle_correction(SinkDir=".",
                                               'angles_file'],
                                 function=median_angle_correct),
                   name='median_angle_correct')
+    #TODO set which files should be put into the datasink node...
     # Create workflow
-    median_angle_correction = pe.Workflow('macWorkflow')
-    median_angle_correction.connect(inputspec, 'subject', mac, 'realigned_file')
-    median_angle_correction.connect(inputspec, 'target_angle', mac, 'target_angle_deg')
-    median_angle_correction.connect(mac, 'corrected_file', outputspec, 'subject')
-    median_angle_correction.connect(mac, 'angles_file', outputspec, 'pc_angles')
+    analysisflow= pe.Workflow('macWorkflow')
+    analysisflow.base_dir = WorkingDirectory
+    analysisflow.connect(inputspec, 'realigned_file', mac, 'realigned_file')
+    analysisflow.connect(inputspec, 'target_angle', mac, 'target_angle_deg')
+    analysisflow.connect(mac, 'corrected_file', outputspec, 'final_func')
+    analysisflow.connect(mac, 'angles_file', outputspec, 'pc_angles')
 
-    return median_angle_correction
+    return analysisflow
 # After here, functions are manipulating in a group level.
 #TODO ezt nekünk is használni kell??
 def calc_median_angle_params(subject):

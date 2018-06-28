@@ -20,6 +20,8 @@ def datacens_workflow(
 
     Workflow inputs:
         :param func: The reoriented,motion occrected, nuissance removed and bandpass filtered functional file.
+        :param movement_parameters: the movement parameters from volume alignment step
+        :param threshold: threshold of FD volumes which should be excluded
         :param SinkDir:
         :param SinkTag: The output directory in which the returned images (see workflow outputs) could be found in a subdirectory directory specific for this workflow..
 
