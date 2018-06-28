@@ -933,6 +933,80 @@
           "code": [
             {
               "argument": {
+                "name": "TR"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "TR", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "highpasssec"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "highpasssec", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "sigmaV"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "sigmaV", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function Sec2sigmaV", 
+            "argument": {
+              "import": "import PUMI.utils.utils_math as utils_math", 
+              "name": "utils_math.Sec2sigmaV"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "Custom, utils_math"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "utils_math.Sec2sigmaV"
+      }
+    }, 
+    {
+      "category": [
+        "PUMI", 
+        "utils"
+      ], 
+      "import": "import PUMI.utils.utils_math as utils_math", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
                 "name": "a"
               }, 
               "language": "Nipype"

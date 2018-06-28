@@ -1,8 +1,12 @@
-from nipype.interfaces.utility import Function
-
-
-def fieldmapper(func, magnitude, phase, TE1, TE2, dwell_time, unwarp_direction="y-",
-                SinkDir=".", SinkTag="func_fieldmapcorr"):
+def fieldmapper(func,
+                magnitude,
+                phase,
+                TE1,
+                TE2,
+                dwell_time,
+                unwarp_direction="y-",
+                SinkDir=".",
+                SinkTag="func_fieldmapcorr"):
     import psutil
     import json
     import os
@@ -20,7 +24,7 @@ def fieldmapper(func, magnitude, phase, TE1, TE2, dwell_time, unwarp_direction="
     ###########################################
     # adjust number of cores with psutil.cpu_count()
     ###########################################
-    # also add:
+    # also subtract:
     # analysisflow = nipype.Workflow('FieldMapper')
     # analysisflow.base_dir = '.'
     ###########################################
@@ -40,82 +44,82 @@ def fieldmapper(func, magnitude, phase, TE1, TE2, dwell_time, unwarp_direction="
     OutJSON = SinkDir + "/outputs.JSON"
 
     # Basic interface class generates identity mappings
-    NodeHash_604000eb5d20 = pe.Node(utility.IdentityInterface(
+    inputspec = pe.Node(utility.IdentityInterface(
         fields=['func', 'magnitude', 'phase', 'TE1', 'TE2', 'dwell_time', 'unwarp_direction']),
-                                    name='NodeName_604000eb5d20')
-    NodeHash_604000eb5d20.inputs.func = func
-    NodeHash_604000eb5d20.inputs.magnitude = magnitude
-    NodeHash_604000eb5d20.inputs.phase = phase
-    NodeHash_604000eb5d20.inputs.TE1 = TE1
-    NodeHash_604000eb5d20.inputs.TE2 = TE2
-    NodeHash_604000eb5d20.inputs.dwell_time = dwell_time
-    NodeHash_604000eb5d20.inputs.unwarp_direction = unwarp_direction
+                                    name='inputspec')
+    inputspec.inputs.func = func
+    inputspec.inputs.magnitude = magnitude
+    inputspec.inputs.phase = phase
+    inputspec.inputs.TE1 = TE1
+    inputspec.inputs.TE2 = TE2
+    inputspec.inputs.dwell_time = dwell_time
+    inputspec.inputs.unwarp_direction = unwarp_direction
 
     # Wraps command **bet**
-    NodeHash_604000cba700 = pe.MapNode(interface=fsl.BET(), name='NodeName_604000cba700', iterfield=['in_file'])
-    NodeHash_604000cba700.inputs.mask = True
+    bet = pe.MapNode(interface=fsl.BET(), name='bet', iterfield=['in_file'])
+    bet.inputs.mask = True
 
     # Wraps command **fslmaths**
-    NodeHash_600001ab26c0 = pe.MapNode(interface=fsl.ErodeImage(), name='NodeName_600001ab26c0', iterfield=['in_file'])
+    erode = pe.MapNode(interface=fsl.ErodeImage(), name='erode', iterfield=['in_file'])
 
     # Wraps command **fslmaths**
-    NodeHash_60c0018a6e40 = pe.MapNode(interface=fsl.ErodeImage(), name='NodeName_60c0018a6e40', iterfield=['in_file'])
+    erode2 = pe.MapNode(interface=fsl.ErodeImage(), name='erode2', iterfield=['in_file'])
 
     # Custom interface wrapping function SubTwo
-    NodeHash_60c0018a4860 = pe.Node(interface=utils_math.SubTwo, name='NodeName_60c0018a4860')
+    subtract = pe.Node(interface=utils_math.SubTwo, name='subtract')
 
     # Custom interface wrapping function Abs
-    NodeHash_600001eab220 = pe.Node(interface=utils_math.Abs, name='NodeName_600001eab220')
+    abs = pe.Node(interface=utils_math.Abs, name='abs')
 
     # Wraps command **fsl_prepare_fieldmap**
-    NodeHash_6000018b2600 = pe.MapNode(interface=fsl.PrepareFieldmap(), name='NodeName_6000018b2600',
+    preparefm = pe.MapNode(interface=fsl.PrepareFieldmap(), name='preparefm',
                                        iterfield=['in_phase', 'in_magnitude'])
 
     # Wraps command **fugue**
-    NodeHash_60c0018a5a60 = pe.MapNode(interface=fsl.FUGUE(), name='NodeName_60c0018a5a60',
+    fugue = pe.MapNode(interface=fsl.FUGUE(), name='fugue',
                                        iterfield=['in_file', 'fmap_in_file', 'mask_file'])
 
     # Generic datasink module to store structured outputs
-    NodeHash_6000010a5b80 = pe.Node(interface=io.DataSink(), name='NodeName_6000010a5b80')
-    NodeHash_6000010a5b80.inputs.base_directory = SinkDir
-    NodeHash_6000010a5b80.inputs.regexp_substitutions = [("func_fieldmapcorr/_NodeName_.{13}", "")]
+    outputspec = pe.Node(interface=io.DataSink(), name='outputspec')
+    outputspec.inputs.base_directory = SinkDir
+    outputspec.inputs.regexp_substitutions = [("func_fieldmapcorr/_NodeName_.{13}", "")]
 
     # Generic datasink module to store structured outputs
-    NodeHash_608001eb9bc0 = pe.Node(interface=io.DataSink(), name='NodeName_608001eb9bc0')
-    NodeHash_608001eb9bc0.inputs.base_directory = SinkDir
-    NodeHash_608001eb9bc0.inputs.regexp_substitutions = [("_NodeName_.{13}", "")]
+    outputspec2 = pe.Node(interface=io.DataSink(), name='outputspec2')
+    outputspec2.inputs.base_directory = SinkDir
+    outputspec2.inputs.regexp_substitutions = [("_NodeName_.{13}", "")]
 
     # Very simple frontend for storing values into a JSON file.
-    NodeHash_6000024a5820 = pe.Node(interface=io.JSONFileSink(), name='NodeName_6000024a5820')
-    NodeHash_6000024a5820.inputs.out_file = OutJSON
+    #NodeHash_6000024a5820 = pe.Node(interface=io.JSONFileSink(), name='NodeName_6000024a5820')
+    #NodeHash_6000024a5820.inputs.out_file = OutJSON
 
     # Create a workflow to connect all those nodes
     analysisflow = nipype.Workflow('FieldMapper')
     analysisflow.base_dir = '.'
-    analysisflow.connect(NodeHash_608001eb9bc0, 'out_file', NodeHash_6000024a5820, 'fieldmap')
-    analysisflow.connect(NodeHash_6000018b2600, 'out_fieldmap', NodeHash_608001eb9bc0, 'fieldmap')
-    analysisflow.connect(NodeHash_6000010a5b80, 'out_file', NodeHash_6000024a5820, 'func_fieldmapcorr')
-    analysisflow.connect(NodeHash_600001eab220, 'abs', NodeHash_6000018b2600, 'delta_TE')
-    analysisflow.connect(NodeHash_60c0018a4860, 'dif', NodeHash_600001eab220, 'x')
-    analysisflow.connect(NodeHash_604000eb5d20, 'unwarp_direction', NodeHash_60c0018a5a60, 'unwarp_direction')
-    analysisflow.connect(NodeHash_60c0018a5a60, 'unwarped_file', NodeHash_6000010a5b80, 'func_fieldmapcorr')
-    analysisflow.connect(NodeHash_6000018b2600, 'out_fieldmap', NodeHash_60c0018a5a60, 'fmap_in_file')
-    analysisflow.connect(NodeHash_60c0018a6e40, 'out_file', NodeHash_60c0018a5a60, 'mask_file')
-    analysisflow.connect(NodeHash_604000cba700, 'mask_file', NodeHash_60c0018a6e40, 'in_file')
-    analysisflow.connect(NodeHash_604000eb5d20, 'dwell_time', NodeHash_60c0018a5a60, 'dwell_time')
-    analysisflow.connect(NodeHash_604000eb5d20, 'func', NodeHash_60c0018a5a60, 'in_file')
-    analysisflow.connect(NodeHash_604000cba700, 'out_file', NodeHash_600001ab26c0, 'in_file')
-    analysisflow.connect(NodeHash_604000eb5d20, 'TE2', NodeHash_60c0018a4860, 'b')
-    analysisflow.connect(NodeHash_604000eb5d20, 'TE1', NodeHash_60c0018a4860, 'a')
-    analysisflow.connect(NodeHash_604000eb5d20, 'phase', NodeHash_6000018b2600, 'in_phase')
-    analysisflow.connect(NodeHash_600001ab26c0, 'out_file', NodeHash_6000018b2600, 'in_magnitude')
-    analysisflow.connect(NodeHash_604000eb5d20, 'magnitude', NodeHash_604000cba700, 'in_file')
+    #analysisflow.connect(outputspec2, 'out_file', NodeHash_6000024a5820, 'fieldmap')
+    analysisflow.connect(preparefm, 'out_fieldmap', outputspec2, 'fieldmap')
+    #analysisflow.connect(outputspec, 'out_file', NodeHash_6000024a5820, 'func_fieldmapcorr')
+    analysisflow.connect(abs, 'abs', preparefm, 'delta_TE')
+    analysisflow.connect(subtract, 'dif', abs, 'x')
+    analysisflow.connect(inputspec, 'unwarp_direction', fugue, 'unwarp_direction')
+    analysisflow.connect(fugue, 'unwarped_file', outputspec, 'func_fieldmapcorr')
+    analysisflow.connect(preparefm, 'out_fieldmap', fugue, 'fmap_in_file')
+    analysisflow.connect(erode2, 'out_file', fugue, 'mask_file')
+    analysisflow.connect(bet, 'mask_file', erode2, 'in_file')
+    analysisflow.connect(inputspec, 'dwell_time', fugue, 'dwell_time')
+    analysisflow.connect(inputspec, 'func', fugue, 'in_file')
+    analysisflow.connect(bet, 'out_file', erode, 'in_file')
+    analysisflow.connect(inputspec, 'TE2', subtract, 'b')
+    analysisflow.connect(inputspec, 'TE1', subtract, 'a')
+    analysisflow.connect(inputspec, 'phase', preparefm, 'in_phase')
+    analysisflow.connect(erode, 'out_file', preparefm, 'in_magnitude')
+    analysisflow.connect(inputspec, 'magnitude', bet, 'in_file')
 
     # Run the workflow
-    plugin = 'MultiProc'  # adjust your desired plugin here
-    plugin_args = {'n_procs': psutil.cpu_count()}  # adjust to your number of cores
-    analysisflow.write_graph(graph2use='flat', format='png', simple_form=False)
-    analysisflow.run(plugin=plugin, plugin_args=plugin_args)
+    #plugin = 'MultiProc'  # adjust your desired plugin here
+    #plugin_args = {'n_procs': psutil.cpu_count()}  # adjust to your number of cores
+    #analysisflow.write_graph(graph2use='flat', format='png', simple_form=False)
+    #analysisflow.run(plugin=plugin, plugin_args=plugin_args)
 
     ####################################################################################################
     # Porcupine generated code ends here
@@ -124,11 +128,12 @@ def fieldmapper(func, magnitude, phase, TE1, TE2, dwell_time, unwarp_direction="
     #load and return json
     # you have to be aware the keys of the json map here
 
-    ret = json.load(open(OutJSON))
-    return ret['func_fieldmapcorr'], ret['fieldmap']
+    #ret = json.load(open(OutJSON))
+    #return ret['func_fieldmapcorr'], ret['fieldmap']
+    return analysisflow
 
 
-WorkFlow = Function(input_names=['func', 'magnitude', 'phase', 'TE1', 'TE2', 'dwell_time', 'unwarp_direction', 'SinkDir', 'SinkTag'],
-                    output_names=['func_fieldmapcorr', 'fieldmap'],
-                    function=fieldmapper)
+#WorkFlow = Function(input_names=['func', 'magnitude', 'phase', 'TE1', 'TE2', 'dwell_time', 'unwarp_direction', 'SinkDir', 'SinkTag'],
+#                    output_names=['func_fieldmapcorr', 'fieldmap'],
+#                    function=fieldmapper)
 

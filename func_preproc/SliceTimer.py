@@ -1,33 +1,46 @@
-from nipype.interfaces.utility import Function
-#comment
-def slicetimer(func, slicetiming_txt, SinkDir=".", SinkTag="func_slicetimed"):
-    import psutil
-    import json
-    import os
+def slt_workflow(func="/home/balint/Dokumentumok/phd/essen/PAINTER/probe/s002/func_data.nii.gz",
+               slicetiming_txt="alt+z",
+               SinkDir=".",
+               SinkTag="func_preproc",
+               WorkingDirectory="."):
 
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
-    if not os.path.exists(SinkDir):
-        os.makedirs(SinkDir)
-    ###########################################
-    # HERE INSERT PORCUPINE GENERATED CODE
-    # MUST DEFINE
-    # OutJSON: file path to JSON file contaioning the output strings to be returned
-    # variables can (should) use variable SinkDir (defined here as function argument)
-    ###########################################
-    #TO DO:
-    ###########################################
-    # adjust number of cores with psutil.cpu_count()
-    ###########################################
-    # also add:
-    # analysisflow = nipype.Workflow('SliceTimer')
-    # analysisflow.base_dir = '.'
-    ###########################################
-    # Here comes the generated code
-    ###########################################
+    """
+    Modified version of porcupine generated slicetiming code:
+
+    `source: -`
+
+
+    Creates a slice time corrected functional image.
+
+    Workflow inputs:
+        :param func: The reoriented functional file.
+        :param SinkDir:
+        :param SinkTag: The output directory in which the returned images (see workflow outputs) could be found in a subdirectory directory specific for this workflow.
+
+    Workflow outputs:
+
+
+
+
+        :return: slt_workflow - workflow
+
+
+
+
+    Balint Kincses
+    kincses.balint@med.u-szeged.hu
+    2018
+
+
+    """
+
+
 
     # This is a Nipype generator. Warning, here be dragons.
     # !/usr/bin/env python
+
     import sys
+    import os
     import nipype
     import nipype.pipeline as pe
     import nipype.interfaces.utility as utility
@@ -36,88 +49,74 @@ def slicetimer(func, slicetiming_txt, SinkDir=".", SinkTag="func_slicetimed"):
     import nipype.interfaces.afni as afni
     import nipype.interfaces.io as io
 
-    OutJSON = SinkDir + "/outputs.JSON"
-    WorkingDirectory = "."
+    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    if not os.path.exists(SinkDir):
+        os.makedirs(SinkDir)
 
     # Basic interface class generates identity mappings
-    NodeHash_6040006ae640 = pe.Node(utility.IdentityInterface(fields=['func', 'slicetiming_txt']),
-                                    name='NodeName_6040006ae640')
-    NodeHash_6040006ae640.inputs.func = func
-    NodeHash_6040006ae640.inputs.slicetiming_txt = slicetiming_txt
+    inputspec = pe.Node(utility.IdentityInterface(fields=['func',
+                                                          'slicetiming_txt']),
+                                    name='inputspec')
+    inputspec.inputs.func = func
+    inputspec.inputs.slicetiming_txt = slicetiming_txt
 
     # Custom interface wrapping function TR
-    NodeHash_6000004b9860 = pe.MapNode(interface=info_get.TR, name='NodeName_6000004b9860', iterfield=['in_file'])
+    #NodeHash_6000004b9860 = pe.MapNode(interface=info_get.TR, name='NodeName_6000004b9860', iterfield=['in_file'])
+    TRvalue = pe.Node(interface=info_get.TR,
+                      name='TRvalue')
 
     # Custom interface wrapping function Str2Float
-    NodeHash_6040006ae9a0 = pe.MapNode(interface=utils_convert.Str2Float, name='NodeName_6040006ae9a0',
-                                       iterfield=['str'])
+    func_str2float = pe.Node(interface=utils_convert.Str2Float,
+                                name='func_str2float')
 
     # Custom interface wrapping function Float2Str
-    NodeHash_6040004aee80 = pe.MapNode(interface=utils_convert.Float2Str, name='NodeName_6040004aee80',
-                                       iterfield=['float'])
+    func_str2float_2 = pe.Node(interface=utils_convert.Float2Str,
+                               name='func_str2float_2')
 
     # Wraps command **3dTshift**
-    NodeHash_6040004ad140 = pe.MapNode(interface=afni.TShift(), name='NodeName_6040004ad140',
-                                       iterfield=['in_file', 'tr'])
-    NodeHash_6040004ad140.inputs.rltplus = True
-    NodeHash_6040004ad140.inputs.outputtype = "NIFTI_GZ"
-    NodeHash_6040004ad140.inputs.terminal_output = 'allatonce'
-
-    # Generic datasink module to store structured outputs
-    NodeHash_6080008b3d40 = pe.Node(interface=io.DataSink(), name='NodeName_6080008b3d40')
-    NodeHash_6080008b3d40.inputs.base_directory = SinkDir
-    NodeHash_6080008b3d40.inputs.regexp_substitutions = [("func_slicetimed/_NodeName_.{13}", "")]
+    sltcor = pe.Node(interface=afni.TShift(),
+                     name='sltcor')
+    sltcor.inputs.rltplus = True
+    sltcor.inputs.outputtype = "NIFTI_GZ"
+    #sltcor.inputs.terminal_output = 'allatonce'
 
     # Basic interface class generates identity mappings
-    NodeHash_6080008b5660 = pe.Node(utility.IdentityInterface(fields=['func_slicetimed', 'TR']),
-                                    name='NodeName_6080008b5660')
+    outputspec = pe.Node(utility.IdentityInterface(fields=['slicetimed', 'TR']),
+                                    name='outputspec')
 
     # Custom interface wrapping function JoinVal2Dict
-    NodeHash_6040004afde0 = pe.Node(interface=utils_convert.JoinVal2Dict, name='NodeName_6040004afde0')
+    #func_joinval2dict = pe.Node(interface=utils_convert.JoinVal2Dict,
+    #                            name='func_joinval2dict')
 
-    # Very simple frontend for storing values into a JSON file.
-    NodeHash_6080008b5240 = pe.Node(interface=io.JSONFileSink(), name='NodeName_6080008b5240')
-    NodeHash_6080008b5240.inputs.out_file = OutJSON
+    # Generic datasink module to store structured outputs
+    ds = pe.Node(interface=io.DataSink(),
+                 name='ds')
+    ds.inputs.base_directory = SinkDir
+    #ds.inputs.regexp_substitutions = [("func_slicetimed/_NodeName_.{13}", "")]
 
-    # Very simple frontend for storing values into a JSON file.
-    NodeHash_6080008b7400 = pe.Node(interface=io.JSONFileSink(), name='NodeName_6080008b7400')
-    NodeHash_6080008b7400.inputs.out_file = SinkDir + "/TR.json"
+
+
+
 
     # Create a workflow to connect all those nodes
-    analysisflow = nipype.Workflow('SliceTimer')
-    analysisflow.base_dir = '.'
-    analysisflow.connect(NodeHash_6040006ae640, 'slicetiming_txt', NodeHash_6040004ad140, 'tpattern')
-    analysisflow.connect(NodeHash_6040006ae9a0, 'float', NodeHash_6080008b5660, 'TR')
-    analysisflow.connect(NodeHash_6040006ae640, 'func', NodeHash_6040004ad140, 'in_file')
-    analysisflow.connect(NodeHash_6040006ae640, 'func', NodeHash_6000004b9860, 'in_file')
-    analysisflow.connect(NodeHash_6040004aee80, 'str', NodeHash_6040004ad140, 'tr')
-    analysisflow.connect(NodeHash_6000004b9860, 'TR', NodeHash_6040004aee80, 'float')
-    analysisflow.connect(NodeHash_6080008b3d40, 'out_file', NodeHash_6040004afde0, 'keys')
-    analysisflow.connect(NodeHash_6040004afde0, 'dict', NodeHash_6080008b7400, 'in_dict')
-    analysisflow.connect(NodeHash_6040006ae9a0, 'float', NodeHash_6040004afde0, 'vals')
-    analysisflow.connect(NodeHash_6000004b9860, 'TR', NodeHash_6040006ae9a0, 'str')
-    analysisflow.connect(NodeHash_6040004ad140, 'out_file', NodeHash_6080008b3d40, 'func_slicetimed')
-    analysisflow.connect(NodeHash_6040004ad140, 'out_file', NodeHash_6080008b5660, 'func_slicetimed')
-    analysisflow.connect(NodeHash_6080008b5660, 'TR', NodeHash_6080008b5240, 'TR')
-    analysisflow.connect(NodeHash_6080008b3d40, 'out_file', NodeHash_6080008b5240, 'func_slicetimed')
-
-    # Run the workflow
-    plugin = 'MultiProc'  # adjust your desired plugin here
-    plugin_args = {'n_procs': psutil.cpu_count()}  # adjust to your number of cores
-    analysisflow.write_graph(graph2use='flat', format='png', simple_form=False)
-    analysisflow.run(plugin=plugin, plugin_args=plugin_args)
-
-    ####################################################################################################
-    # Porcupine generated code ends here
-    ####################################################################################################
-
-    #load and return json
-    # you have to be aware the keys of the json map here
-    ret = json.load(open(OutJSON))
-    return ret['func_slicetimed'], ret['TR']
+    analysisflow = nipype.Workflow('slctWorkflow')
+    analysisflow.base_dir =WorkingDirectory
+    analysisflow.connect(inputspec, 'slicetiming_txt', sltcor, 'tpattern')
+    analysisflow.connect(func_str2float, 'float', outputspec, 'TR')
+    analysisflow.connect(inputspec, 'func', sltcor, 'in_file')
+    analysisflow.connect(inputspec, 'func', TRvalue, 'in_file')
+    analysisflow.connect(func_str2float_2, 'str', sltcor, 'tr')
+    analysisflow.connect(TRvalue, 'TR', func_str2float_2, 'float')
+    #analysisflow.connect(ds, 'out_file', func_joinval2dict, 'keys')
+    #analysisflow.connect(func_str2float, 'float', func_joinval2dict, 'vals')
+    analysisflow.connect(TRvalue, 'TR', func_str2float, 'str')
+    analysisflow.connect(sltcor, 'out_file', ds, 'slicetimed')
+    analysisflow.connect(sltcor, 'out_file', outputspec, 'slicetimed')
 
 
-WorkFlow = Function(input_names=['func', 'slicetiming_txt', 'SinkDir', 'SinkTag'],
-                    output_names=['func_slicetimed', 'TR'],
-                    function=slicetimer)
+
+    return analysisflow
+
+
+
 

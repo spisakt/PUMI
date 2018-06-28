@@ -64,6 +64,7 @@ def get_idx(in_files, stop_idx=None, start_idx=None):
         raise TypeError('Input nifti file: %s is not a 4D file' % in_files)
     # Grab the number of volumes
     nvols = int(hdr.get_data_shape()[3])
+    lastvolidx=nvols-1
 
     if (start_idx == None) or (start_idx < 0) or (start_idx > (nvols - 1)):
         startidx = 0
@@ -75,7 +76,7 @@ def get_idx(in_files, stop_idx=None, start_idx=None):
     else:
         stopidx = stop_idx
 
-    return stopidx, startidx
+    return stopidx, startidx, lastvolidx
 
 
 TR = Function(input_names=['in_file'],
@@ -84,6 +85,6 @@ TR = Function(input_names=['in_file'],
 
 
 tMinMax = Function(input_names=['in_files', 'start_idx', 'stop_idx'],
-                       output_names=['startidx', 'stopidx'],
+                       output_names=['startidx', 'stopidx','lastvolidx'],
                        function=get_idx)
 
