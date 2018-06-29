@@ -73,9 +73,15 @@ def fast_workflow(
                          name='outputspec')
 
     # Save outputs which are important
-    ds = pe.Node(interface=io.DataSink(),
-                 name='ds')
+    ds = pe.Node(interface=io.DataSink(),name='ds')
     ds.inputs.base_directory = SinkDir
+    ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
+
+    def pickindex(vec, i):
+        #print "************************************************************************************************************************************************"
+        #print vec
+        #print i
+        return [x[i] for x in vec]
 
     #Create a workflow to connect all those nodes
     analysisflow = nipype.Workflow('fastWorkflow')
@@ -85,6 +91,8 @@ def fast_workflow(
     analysisflow.connect(fast, 'mixeltype', outputspec, 'mixeltype')
     analysisflow.connect(fast, 'partial_volume_files', outputspec, 'partial_volume_files')
     analysisflow.connect(fast, 'partial_volume_map', outputspec, 'partial_volume_map')
-    analysisflow.connect(fast, 'probability_maps', ds, 'fast.@probability_maps')
+    analysisflow.connect(fast, ('probability_maps', pickindex, 0), ds, 'fast_csf')
+    analysisflow.connect(fast, ('probability_maps', pickindex, 1), ds, 'fast_gm')
+    analysisflow.connect(fast, ('probability_maps', pickindex, 2), ds, 'fast_wm')
 
     return analysisflow

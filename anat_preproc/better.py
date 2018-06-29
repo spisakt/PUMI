@@ -72,6 +72,7 @@ def bet_workflow(
                name='ds')
     ds.inputs.base_directory=SinkDir
     #ds.inputs.container=SinkDir+"anat"
+    ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
 
     #Create a workflow to connect all those nodes
     analysisflow = nipype.Workflow('betWorkflow') # The name here determine the folder of the workspace
@@ -80,8 +81,8 @@ def bet_workflow(
     analysisflow.connect(inputspec, 'opt_R', bet, 'robust')
     analysisflow.connect(bet, 'mask_file', outputspec, 'brain_mask')
     analysisflow.connect(bet, 'out_file', outputspec, 'brain')
-    analysisflow.connect(bet, 'out_file', ds, 'bet')
-    analysisflow.connect(bet, 'mask_file', ds, 'bet.@mask')
+    analysisflow.connect(bet, 'out_file', ds, 'bet_brain')
+    analysisflow.connect(bet, 'mask_file', ds, 'bet_mask')
     analysisflow.connect(inputspec, 'anat', outputspec, 'skull')
 
     return analysisflow

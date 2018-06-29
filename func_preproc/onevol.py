@@ -61,6 +61,7 @@ def onevol_workflow(
     ds = pe.Node(interface=io.DataSink(),
                  name='ds')
     ds.inputs.base_directory = SinkDir
+    ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
 
     analysisflow = nipype.Workflow('onevolWorkflow')
     analysisflow.base_dir = '.'

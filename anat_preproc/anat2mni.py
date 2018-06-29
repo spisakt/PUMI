@@ -94,6 +94,26 @@ def anat2mni_workflow(
                                name='inv_linear_reg0_xfm')
     inv_flirt_xfm.inputs.invert_xfm = True
 
+    # Create png images for quality check
+    slicer = pe.MapNode(interface=fsl.Slicer(all_axial=True),
+                        iterfield=['in_file'],
+                        name='slicer')
+    slicer.inputs.image_width = 1400
+    # set output all axial slices into one picture
+    slicer.inputs.all_axial = True
+    slicer.inputs.threshold_edges = 0.12
+    slicer.inputs.image_edges = fsldir + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
+
+    # Save outputs which are important
+    ds = pe.Node(interface=io.DataSink(), name='ds')
+    ds.inputs.base_directory = SinkDir
+    ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
+
+    # Save outputs which are important
+    ds2 = pe.Node(interface=io.DataSink(), name='ds_slicer')
+    ds2.inputs.base_directory = SinkDir
+    ds2.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".png")]
+
     # Define outputs of the workflow
     outputspec = pe.Node(utility.IdentityInterface(fields=['output_brain',
                                                            'linear_xfm',
@@ -101,11 +121,6 @@ def anat2mni_workflow(
                                                            'nonlinear_xfm',
                                                            'field_file']),
                          name='outputspec')
-
-    # Save outputs which are important
-    ds = pe.Node(interface=io.DataSink(),
-                 name='ds')
-    ds.inputs.base_directory = SinkDir
 
     # Create workflow nad connect nodes
     analysisflow = pe.Workflow(name='anat2mniWorkflow')
@@ -127,7 +142,9 @@ def anat2mni_workflow(
     analysisflow.connect(linear_reg, 'out_matrix_file',inv_flirt_xfm, 'in_file')
     analysisflow.connect(inv_flirt_xfm, 'out_file',outputspec, 'invlinear_xfm')
     analysisflow.connect(linear_reg, 'out_matrix_file',outputspec, 'linear_xfm')
-    analysisflow.connect(brain_warp, 'out_file', ds, 'anat2mni')
-    analysisflow.connect(nonlinear_reg, 'fieldcoeff_file', ds, 'anat2mni.@warpfield')
+    analysisflow.connect(brain_warp, 'out_file', ds, 'anat2mni_std')
+    analysisflow.connect(nonlinear_reg, 'fieldcoeff_file', ds, 'anat2mni_warpfield')
+    analysisflow.connect(brain_warp, 'out_file', slicer, 'in_file')
+    analysisflow.connect(slicer, 'out_file', ds2, 'anat2mni_regcheck')
 
     return analysisflow

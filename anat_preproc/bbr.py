@@ -94,10 +94,25 @@ def bbr_workflow(SinkDir=".",
                                     name='bbreg_func_to_anat')
     bbreg_func_to_anat.inputs.dof = 6
 
+    # Create png images for quality check
+    slicer = pe.MapNode(interface=fsl.Slicer(all_axial=True),
+                        iterfield=['in_file'],
+                        name='slicer')
+    slicer.inputs.image_width = 1400
+    # set output all axial slices into one picture
+    slicer.inputs.all_axial = True
+
     # Save outputs which are important
     ds = pe.Node(interface=io.DataSink(),
                  name='ds')
     ds.inputs.base_directory = SinkDir
+    ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
+
+    # Save outputs which are important
+    ds2 = pe.Node(interface=io.DataSink(),
+                 name='ds_slicer')
+    ds2.inputs.base_directory = SinkDir
+    ds2.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".png")]
 
     # Define outputs of the workflow
     #TODO inverted transformation matrix node is necessery
@@ -122,7 +137,10 @@ def bbr_workflow(SinkDir=".",
     analysisflow.connect(inputspec, 'func', linear_reg, 'in_file')
     analysisflow.connect(inputspec, 'skull',linear_reg, 'reference')
     analysisflow.connect(linear_reg, 'out_matrix_file', outputspec, 'func_to_anat_linear_xfm_nobbreg')
-    analysisflow.connect(bbreg_func_to_anat, 'out_file', ds, 'bbr.@bbr')
+    analysisflow.connect(bbreg_func_to_anat, 'out_file', ds, 'bbr')
+    analysisflow.connect(bbreg_func_to_anat, 'out_file', slicer, 'in_file')
+    analysisflow.connect(wm_bb_mask, 'out_file', slicer, 'image_edges')
+    analysisflow.connect(slicer, 'out_file', ds, 'bbr_regcheck')
 
     return analysisflow
 

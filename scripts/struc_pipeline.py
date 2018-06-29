@@ -20,9 +20,9 @@ import PUMI.func_preproc.onevol as onevol
 if (len(sys.argv) <= 2):
     print("Please specify command line arguments!")
     print("Usage:")
-    print(sys.argv[0] + " <highres_data_template> <func_data_template>")
+    print(sys.argv[0] + " <\"highres_data_template\"> <\"func_data_template\">")
     print("Example:")
-    print(sys.argv[0] + " <highres_data/subject_*.nii.gz> <func_data/subject_*.nii.gz>")
+    print(sys.argv[0] + " \"highres_data/subject_*.nii.gz\" \"func_data/subject_*.nii.gz\"")
     quit()
 
 # create data grabber
