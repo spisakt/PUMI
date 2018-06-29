@@ -1,4 +1,4 @@
-def onevol_workflow(func="/home/balint/Dokumentumok/phd/essen/PAINTER/probe/s002/func_data.nii.gz",
+def onevol_workflow(
            SinkDir=".",
            SinkTag="anat_preproc"):
 
@@ -40,17 +40,18 @@ def onevol_workflow(func="/home/balint/Dokumentumok/phd/essen/PAINTER/probe/s002
     # Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=['func']),
                         name='inputspec')
-    inputspec.inputs.func=func
     #inputspec.inputs.func = "/home/balint/Dokumentumok/phd/essen/PAINTER/probe/s002/func_data.nii.gz"
 
     # Get dimension infos
-    idx = pe.Node(interface=info_get.tMinMax,
-                      name='idx')
+    idx = pe.MapNode(interface=info_get.tMinMax,
+                     iterfield=['in_files'],
+                     name='idx')
 
     # Get the last volume of the func image
-    fslroi=pe.Node(fsl.ExtractROI(),
-                        name='fslroi')
-    fslroi.inputs.t_size=1
+    fslroi = pe.MapNode(fsl.ExtractROI(),
+                      iterfield=['in_file', 't_min'],
+                      name='fslroi')
+    fslroi.inputs.t_size = 1
 
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['func1vol']),

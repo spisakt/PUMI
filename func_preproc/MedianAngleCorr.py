@@ -197,7 +197,7 @@ def mac_workflow(SinkDir=".",
 
     return analysisflow
 # After here, functions are manipulating in a group level.
-#TODO ezt nekünk is használni kell??
+#TODO do we need this?
 def calc_median_angle_params(subject):
     """
     Calculates median angle parameters of a subject

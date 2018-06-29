@@ -1,8 +1,7 @@
-def bet_workflow(anat="/home/balint/Dokumentumok/phd/essen/PAINTER/probe/MS001/highres.nii.gz",
-           Robust=True,
-           SinkDir=".",
-           SinkTag="anat_preproc"
-           ):
+def bet_workflow(
+        Robust=True,
+        SinkDir=".",
+        SinkTag="anat_preproc"):
 
     """
     Modified version of CPAC.anat_preproc.anat_preproc:
@@ -52,13 +51,13 @@ def bet_workflow(anat="/home/balint/Dokumentumok/phd/essen/PAINTER/probe/MS001/h
     #Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=['anat',
                                                           'opt_R']),
-                        name = 'inputspec')
-    inputspec.inputs.anat=anat
-    inputspec.inputs.opt_R=Robust
+                        name='inputspec')
+    inputspec.inputs.opt_R = Robust
 
     #Wraps command **bet**
-    bet = pe.Node(interface = fsl.BET(),
-                  name = 'bet')
+    bet = pe.MapNode(interface=fsl.BET(),
+                     iterfield=['in_file'],
+                  name='bet')
     bet.inputs.mask=True
     #bet.inputs.robust=Robust
 

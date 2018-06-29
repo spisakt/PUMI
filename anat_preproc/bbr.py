@@ -40,6 +40,7 @@ def bbr_workflow(SinkDir=".",
     import os
     import nipype
     import nipype.pipeline as pe
+    from nipype.interfaces.utility import Function
     import nipype.interfaces.utility as utility
     import nipype.interfaces.fsl as fsl
     import nipype.interfaces.io as io
@@ -48,6 +49,8 @@ def bbr_workflow(SinkDir=".",
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
 
+    fsldir = os.environ['FSLDIR']
+
     # Define inputs of the workflow
     inputspec = pe.Node(utility.IdentityInterface(fields=['func',
                                                        'skull',
@@ -55,29 +58,46 @@ def bbr_workflow(SinkDir=".",
                                                        'bbr_schedule']),
                         name='inputspec')
     #TODO ask for FSLDIR and put here
-    inputspec.inputs.bbr_schedule="/usr/share/fsl/5.0/etc/flirtsch/bbr.sch"
+    inputspec.inputs.bbr_schedule = fsldir + "/etc/flirtsch/bbr.sch"
     #inputspec.inputs.func=func
     #inputspec.inputs.skull=skull
     #inputspec.inputs.anat_wm_segmentation=anat_wm_segmentation
 
     # trilinear interpolation is used by default
-    linear_reg = pe.Node(interface=fsl.FLIRT(),
-                         name='linear_func_to_anat')
+    linear_reg = pe.MapNode(interface=fsl.FLIRT(),
+                            iterfield=['in_file', 'reference'],
+                            name='linear_func_to_anat')
     linear_reg.inputs.cost = 'corratio'
     linear_reg.inputs.dof = 6
     linear_reg.inputs.out_matrix_file="lin_mat"
 
     # WM probability map is thresholded and masked
-    wm_bb_mask = pe.Node(interface=fsl.ImageMaths(),
-                         name='wm_bb_mask')
+    wm_bb_mask = pe.MapNode(interface=fsl.ImageMaths(),
+                            iterfield=['in_file'],
+                            name='wm_bb_mask')
     wm_bb_mask.inputs.op_string = '-thr 0.5 -bin'
     # A function is defined for define bbr argumentum which says flirt to perform bbr registration
+    # for each element of the list, due to MapNode
     def bbreg_args(bbreg_target):
         return '-cost bbr -wmseg ' + bbreg_target
+
+    bbreg_arg_convert = pe.MapNode(interface=Function(input_names=["bbreg_target"],
+                                                    output_names=["arg"],
+                                                    function=bbreg_args),
+                                   iterfield=['bbreg_target'],
+                                   name="bbr_arg_converter"
+                                 )
+
     # BBR regostration within the FLIRT node
-    bbreg_func_to_anat = pe.Node(interface=fsl.FLIRT(),
-                                 name='bbreg_func_to_anat')
+    bbreg_func_to_anat = pe.MapNode(interface=fsl.FLIRT(),
+                                    iterfield=['in_file', 'reference', 'in_matrix_file', 'args'],
+                                    name='bbreg_func_to_anat')
     bbreg_func_to_anat.inputs.dof = 6
+
+    # Save outputs which are important
+    ds = pe.Node(interface=io.DataSink(),
+                 name='ds')
+    ds.inputs.base_directory = SinkDir
 
     # Define outputs of the workflow
     #TODO inverted transformation matrix node is necessery
@@ -91,16 +111,18 @@ def bbr_workflow(SinkDir=".",
 
     analysisflow = pe.Workflow(name='bbrWorkflow')
     analysisflow.connect(inputspec, 'bbr_schedule', bbreg_func_to_anat, 'schedule')
-    analysisflow.connect(wm_bb_mask, ('out_file', bbreg_args),bbreg_func_to_anat, 'args')
+    analysisflow.connect(wm_bb_mask, 'out_file', bbreg_arg_convert, 'bbreg_target')
+    analysisflow.connect(bbreg_arg_convert, 'arg', bbreg_func_to_anat, 'args')
     analysisflow.connect(inputspec, 'anat_wm_segmentation', wm_bb_mask, 'in_file')
     analysisflow.connect(inputspec, 'func', bbreg_func_to_anat, 'in_file')
     analysisflow.connect(inputspec, 'skull', bbreg_func_to_anat, 'reference')
-    analysisflow.connect(linear_reg, 'out_matrix_file',bbreg_func_to_anat, 'in_matrix_file')
+    analysisflow.connect(linear_reg, 'out_matrix_file', bbreg_func_to_anat, 'in_matrix_file')
     analysisflow.connect(bbreg_func_to_anat, 'out_matrix_file', outputspec, 'func_to_anat_linear_xfm')
     analysisflow.connect(bbreg_func_to_anat, 'out_file', outputspec, 'anat_func')
     analysisflow.connect(inputspec, 'func', linear_reg, 'in_file')
     analysisflow.connect(inputspec, 'skull',linear_reg, 'reference')
     analysisflow.connect(linear_reg, 'out_matrix_file', outputspec, 'func_to_anat_linear_xfm_nobbreg')
+    analysisflow.connect(bbreg_func_to_anat, 'out_file', ds, 'bbr.@bbr')
 
     return analysisflow
 

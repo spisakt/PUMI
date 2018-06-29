@@ -52,6 +52,8 @@ def anat2mni_workflow(
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
 
+    fsldir=os.environ['FSLDIR']
+
 
     # Define inputs of workflow
     inputspec = pe.Node(utility.IdentityInterface(fields=['brain',
@@ -61,33 +63,35 @@ def anat2mni_workflow(
                                                           'ref_mask',
                                                           'fnirt_config']),
                         name='inputspec')
-    #inputspec.inputs.brain=brain
-    #inputspec.inputs.skull=anat
-    #TODO ask for FSLDIR
-    inputspec.inputs.reference_brain="/usr/share/fsl/5.0/data/standard/MNI152_T1_2mm_brain.nii.gz"
-    inputspec.inputs.reference_skull="/usr/share/fsl/5.0/data/standard/MNI152_T1_2mm.nii.gz"
-    inputspec.inputs.ref_mask="/usr/share/fsl/5.0/data/standard/MNI152_T1_2mm_brain_mask_dil.nii.gz"
+
+    inputspec.inputs.reference_brain = fsldir + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
+    inputspec.inputs.reference_skull = fsldir + "/data/standard/MNI152_T1_2mm.nii.gz"
+    inputspec.inputs.ref_mask = fsldir + "/data/standard/MNI152_T1_2mm_brain_mask_dil.nii.gz"
     inputspec.inputs.fnirt_config = "T1_2_MNI152_2mm"
 
 
     # Linear registration node
-    linear_reg = pe.Node(interface=fsl.FLIRT(),
+    linear_reg = pe.MapNode(interface=fsl.FLIRT(),
+                         iterfield=['in_file'],
                          name='linear_reg_0')
     linear_reg.inputs.cost = 'corratio'
 
     # Non-linear registration node
-    nonlinear_reg = pe.Node(interface=fsl.FNIRT(),
-                            name='nonlinear_reg_1')
+    nonlinear_reg = pe.MapNode(interface=fsl.FNIRT(),
+                               iterfield=['in_file', 'affine_file'],
+                               name='nonlinear_reg_1')
     nonlinear_reg.inputs.fieldcoeff_file = True
     nonlinear_reg.inputs.jacobian_file = True
 
     # Applying warp field
-    brain_warp = pe.Node(interface=fsl.ApplyWarp(),
-                         name='brain_warp')
+    brain_warp = pe.MapNode(interface=fsl.ApplyWarp(),
+                            iterfield=['in_file', 'field_file'],
+                            name='brain_warp')
 
     # Calculate the invers of the linear transformation
-    inv_flirt_xfm = pe.Node(interface=fsl.utils.ConvertXFM(),
-                            name='inv_linear_reg0_xfm')
+    inv_flirt_xfm = pe.MapNode(interface=fsl.utils.ConvertXFM(),
+                               iterfield=['in_file'],
+                               name='inv_linear_reg0_xfm')
     inv_flirt_xfm.inputs.invert_xfm = True
 
     # Define outputs of the workflow

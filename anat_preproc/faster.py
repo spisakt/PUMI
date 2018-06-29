@@ -1,4 +1,4 @@
-def fast_workflow(CSF_PRIOR="/usr/share/fsl/5.0/data/standard/tissuepriors/2mm/avg152T1_csf_bin.nii.gz",
+def fast_workflow(
             SinkDir=".",
             SinkTag="anat_preproc"
            ):
@@ -52,12 +52,13 @@ def fast_workflow(CSF_PRIOR="/usr/share/fsl/5.0/data/standard/tissuepriors/2mm/a
 
     #Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=['brain']),
-                        name = 'inputspec')
+                        name='inputspec')
 
 
     # Wraps command **fast**
-    fast = pe.Node(interface=fsl.FAST(),
-                 name='fast')
+    fast = pe.MapNode(interface=fsl.FAST(),
+                      iterfield=['in_files'],
+                      name='fast')
     fast.inputs.img_type = 1
     fast.inputs.segments = True
     fast.inputs.probability_maps = True
