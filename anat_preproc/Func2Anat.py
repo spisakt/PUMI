@@ -96,9 +96,9 @@ def bbr_workflow(SinkDir=".",
 
     # Create png images for quality check
     slicer = pe.MapNode(interface=fsl.Slicer(all_axial=True),
-                        iterfield=['in_file'],
+                        iterfield=['in_file', 'image_edges'],
                         name='slicer')
-    slicer.inputs.image_width = 1400
+    slicer.inputs.image_width = 5000
     # set output all axial slices into one picture
     slicer.inputs.all_axial = True
 
@@ -140,7 +140,7 @@ def bbr_workflow(SinkDir=".",
     analysisflow.connect(bbreg_func_to_anat, 'out_file', ds, 'bbr')
     analysisflow.connect(bbreg_func_to_anat, 'out_file', slicer, 'in_file')
     analysisflow.connect(wm_bb_mask, 'out_file', slicer, 'image_edges')
-    analysisflow.connect(slicer, 'out_file', ds, 'bbr_regcheck')
+    analysisflow.connect(slicer, 'out_file', ds2, 'bbr_regcheck')
 
     return analysisflow
 

@@ -7,12 +7,12 @@ import nipype.pipeline as pe
 # import the defined workflows from the anat_preproc folder
 import nipype.interfaces.io as nio
 import nipype.interfaces.fsl as fsl
-import PUMI.anat_preproc.better as bet
-import PUMI.anat_preproc.faster as fast
-import PUMI.anat_preproc.anat2mni as anat2mni
-import PUMI.anat_preproc.bbr as bbr
+import PUMI.anat_preproc.Better as bet
+import PUMI.anat_preproc.Faster as fast
+import PUMI.anat_preproc.Anat2MNI as anat2mni
+import PUMI.anat_preproc.Func2Anat as bbr
 # import the necessary workflows from the func_preproc folder
-import PUMI.func_preproc.onevol as onevol
+import PUMI.func_preproc.Onevol as onevol
 
 # a workflown belul az altalunk az elso sorban definialt fgv nevet kell a . utan irni.
 

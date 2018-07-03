@@ -7,7 +7,7 @@ import nipype
 import nipype.pipeline as pe
 # TODO set a datagrabber
 # import the defined workflow from the func_preproc folder
-import PUMI.func_preproc.onevol as onevol
+import PUMI.func_preproc.Onevol as onevol
 import PUMI.func_preproc.MotionCorrecter as mc
 import PUMI.func_preproc.Compcor as cmpcor
 import PUMI.func_preproc.NuissanceCorr as nuisscorr
