@@ -1,4 +1,14 @@
-def anat2mni_workflow(
+import os
+import nipype.pipeline as pe
+import nipype.interfaces.utility as utility
+import nipype.interfaces.fsl as fsl
+import nipype.interfaces.io as io
+
+class RegType:
+    FSL = 1  # faster
+    ANTS = 2  # more accurate
+
+def anat2mni_workflow(stdreg=RegType.FSL,
                       SinkDir=".",
                       SinkTag="anat_preproc"
            ):
@@ -39,14 +49,6 @@ def anat2mni_workflow(
 
 
     """
-
-    import sys
-    import os
-    import nipype
-    import nipype.pipeline as pe
-    import nipype.interfaces.utility as utility
-    import nipype.interfaces.fsl as fsl
-    import nipype.interfaces.io as io
 
     SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
     if not os.path.exists(SinkDir):
@@ -118,8 +120,7 @@ def anat2mni_workflow(
     outputspec = pe.Node(utility.IdentityInterface(fields=['output_brain',
                                                            'linear_xfm',
                                                            'invlinear_xfm',
-                                                           'nonlinear_xfm',
-                                                           'field_file']),
+                                                           'nonlinear_xfm']),
                          name='outputspec')
 
     # Create workflow nad connect nodes

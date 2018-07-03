@@ -55,6 +55,7 @@ def fast_workflow(
                         name='inputspec')
 
 
+    # TODO: use prior probabilioty maps
     # Wraps command **fast**
     fast = pe.MapNode(interface=fsl.FAST(),
                       iterfield=['in_files'],
@@ -66,9 +67,13 @@ def fast_workflow(
 
 
     # Basic interface class generates identity mappings
-    outputspec = pe.Node(utility.IdentityInterface(fields=['probability_maps',
+    outputspec = pe.Node(utility.IdentityInterface(fields=['probmap_csf',
+                                                           'probmap_gm',
+                                                           'probmap_wm',
                                                            'mixeltype',
-                                                           'partial_volume_files',
+                                                           'parvol_csf',
+                                                           'parvol_gm',
+                                                           'parvol_wm',
                                                            'partial_volume_map']),
                          name='outputspec')
 
@@ -87,9 +92,15 @@ def fast_workflow(
     analysisflow = nipype.Workflow('fastWorkflow')
     analysisflow.base_dir = '.'
     analysisflow.connect(inputspec, 'brain', fast, 'in_files')
-    analysisflow.connect(fast, 'probability_maps', outputspec, 'probability_maps')
+    #nalysisflow.connect(fast, 'probability_maps', outputspec, 'probability_maps')
+    analysisflow.connect(fast, ('probability_maps', pickindex, 0), outputspec, 'probmap_csf')
+    analysisflow.connect(fast, ('probability_maps', pickindex, 1), outputspec, 'probmap_gm')
+    analysisflow.connect(fast, ('probability_maps', pickindex, 2), outputspec, 'probmap_wm')
     analysisflow.connect(fast, 'mixeltype', outputspec, 'mixeltype')
-    analysisflow.connect(fast, 'partial_volume_files', outputspec, 'partial_volume_files')
+    #analysisflow.connect(fast, 'partial_volume_files', outputspec, 'partial_volume_files')
+    analysisflow.connect(fast, ('partial_volume_files', pickindex, 0), outputspec, 'parvol_csf')
+    analysisflow.connect(fast, ('partial_volume_files', pickindex, 0), outputspec, 'parvol_gm')
+    analysisflow.connect(fast, ('partial_volume_files', pickindex, 0), outputspec, 'parvol_wm')
     analysisflow.connect(fast, 'partial_volume_map', outputspec, 'partial_volume_map')
     analysisflow.connect(fast, ('probability_maps', pickindex, 0), ds, 'fast_csf')
     analysisflow.connect(fast, ('probability_maps', pickindex, 1), ds, 'fast_gm')

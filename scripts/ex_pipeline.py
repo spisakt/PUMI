@@ -7,11 +7,9 @@ import nipype.pipeline as pe
 # import the defined workflows from the anat_preproc folder
 import nipype.interfaces.io as nio
 import nipype.interfaces.fsl as fsl
-import PUMI.anat_preproc.Better as bet
-import PUMI.anat_preproc.Faster as fast
-import PUMI.anat_preproc.Anat2MNI as anat2mni
-import PUMI.anat_preproc.Func2Anat as bbr
+import PUMI.anat_preproc.AnatProc as anatproc
 # import the necessary workflows from the func_preproc folder
+import PUMI.anat_preproc.Func2Anat as bbr
 import PUMI.func_preproc.Onevol as onevol
 
 # a workflown belul az altalunk az elso sorban definialt fgv nevet kell a . utan irni.
@@ -41,9 +39,8 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
                       iterfield=['in_file'],
                       name="reorient_func")
 
-mybet = bet.bet_workflow()
-myfast = fast.fast_workflow()
-myanat2mni = anat2mni.anat2mni_workflow()
+myanatproc = anatproc.AnatProc()
+
 mybbr = bbr.bbr_workflow()
 myonevol = onevol.onevol_workflow()
 #pickindex = lambda x, i: x[i]
@@ -55,21 +52,16 @@ totalWorkflow.base_dir = '.'
 totalWorkflow.connect([
     (datagrab, reorient_struct,
      [('struct', 'in_file')]),
-    (reorient_struct, mybet,
+    (reorient_struct, myanatproc,
      [('out_file', 'inputspec.anat')]),
     (datagrab, reorient_func,
      [('func', 'in_file')]),
     (reorient_func, myonevol,
      [('out_file', 'inputspec.func')]),
-    (mybet, myfast,
-      [('outputspec.brain', 'inputspec.brain')]),
-    (mybet, myanat2mni,
-      [('outputspec.brain', 'inputspec.brain'),
-       ('outputspec.skull', 'inputspec.skull')]),
-    (mybet, mybbr,
+    (myanatproc, mybbr,
       [('outputspec.skull', 'inputspec.skull')]),
-    (myfast, mybbr,
-      [(('outputspec.probability_maps', pickindex, 2), 'inputspec.anat_wm_segmentation')]),
+    (myanatproc, mybbr,
+      [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation')]),
     (myonevol, mybbr,
      [('outputspec.func1vol', 'inputspec.func')])
     ])
