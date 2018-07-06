@@ -7,7 +7,8 @@ import nipype.pipeline as pe
 # import the defined workflows from the anat_preproc folder
 import nipype.interfaces.io as nio
 import nipype.interfaces.fsl as fsl
-import PUMI.anat_preproc.AnatProc as anatproc
+import PUMI.AnatProc as anatproc
+import PUMI.FuncProc as funcproc
 # import the necessary workflows from the func_preproc folder
 import PUMI.anat_preproc.Func2Anat as bbr
 import PUMI.func_preproc.Onevol as onevol
@@ -39,7 +40,7 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
                       iterfield=['in_file'],
                       name="reorient_func")
 
-myanatproc = anatproc.AnatProc()
+myanatproc = anatproc.AnatProc(stdreg=anatproc.RegType.ANTS)
 
 mybbr = bbr.bbr_workflow()
 myonevol = onevol.onevol_workflow()
@@ -47,8 +48,12 @@ myonevol = onevol.onevol_workflow()
 def pickindex(vec, i):
     return [x[i] for x in vec]
 
+myfuncproc = funcproc.FuncProc()
+
 totalWorkflow = nipype.Workflow('totalWorkflow')
 totalWorkflow.base_dir = '.'
+
+# anatomical part and func2anat
 totalWorkflow.connect([
     (datagrab, reorient_struct,
      [('struct', 'in_file')]),
@@ -64,6 +69,12 @@ totalWorkflow.connect([
       [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation')]),
     (myonevol, mybbr,
      [('outputspec.func1vol', 'inputspec.func')])
+    ])
+
+# functional part
+totalWorkflow.connect([
+    (reorient_func, myfuncproc,
+     [('out_file', 'inputspec.func')]),
     ])
 
 

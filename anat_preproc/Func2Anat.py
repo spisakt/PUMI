@@ -45,6 +45,9 @@ def bbr_workflow(SinkDir=".",
     import nipype.interfaces.fsl as fsl
     import nipype.interfaces.io as io
 
+    QCDir = os.path.abspath(SinkDir + "/QC")
+    if not os.path.exists(QCDir):
+        os.makedirs(QCDir)
     SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
@@ -99,19 +102,20 @@ def bbr_workflow(SinkDir=".",
                         iterfield=['in_file', 'image_edges'],
                         name='slicer')
     slicer.inputs.image_width = 5000
+    slicer.inputs.out_file = "func2anat_subj"
     # set output all axial slices into one picture
     slicer.inputs.all_axial = True
 
     # Save outputs which are important
     ds = pe.Node(interface=io.DataSink(),
-                 name='ds')
+                 name='ds_nii')
     ds.inputs.base_directory = SinkDir
     ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
 
     # Save outputs which are important
     ds2 = pe.Node(interface=io.DataSink(),
-                 name='ds_slicer')
-    ds2.inputs.base_directory = SinkDir
+                 name='ds_qc')
+    ds2.inputs.base_directory = QCDir
     ds2.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".png")]
 
     # Define outputs of the workflow
@@ -140,7 +144,7 @@ def bbr_workflow(SinkDir=".",
     analysisflow.connect(bbreg_func_to_anat, 'out_file', ds, 'bbr')
     analysisflow.connect(bbreg_func_to_anat, 'out_file', slicer, 'in_file')
     analysisflow.connect(wm_bb_mask, 'out_file', slicer, 'image_edges')
-    analysisflow.connect(slicer, 'out_file', ds2, 'bbr_regcheck')
+    analysisflow.connect(slicer, 'out_file', ds2, 'func2anat')
 
     return analysisflow
 

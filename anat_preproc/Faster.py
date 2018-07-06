@@ -45,10 +45,14 @@ def fast_workflow(
     import nipype.interfaces.fsl as fsl
     import nipype.interfaces.io as io
 
+    QCDir = os.path.abspath(SinkDir + "/QC")
+    if not os.path.exists(QCDir):
+        os.makedirs(QCDir)
     SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
 
+    fsldir = os.environ['FSLDIR']
 
     #Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=['brain']),
@@ -65,6 +69,15 @@ def fast_workflow(
     fast.inputs.probability_maps = True
     fast.inputs.out_basename = 'fast_'
 
+    # Create png images for quality check
+    slicer = pe.MapNode(interface=fsl.Slicer(all_axial=True),
+                        iterfield=['in_file'],
+                        name='slicer')
+    slicer.inputs.image_width = 5000
+    slicer.inputs.out_file = "func2anat_subj"
+    # set output all axial slices into one picture
+    slicer.inputs.colour_map = fsldir + '/etc/luts/renderjet.lut'
+    slicer.inputs.all_axial = True
 
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['probmap_csf',
@@ -78,9 +91,15 @@ def fast_workflow(
                          name='outputspec')
 
     # Save outputs which are important
-    ds = pe.Node(interface=io.DataSink(),name='ds')
+    ds = pe.Node(interface=io.DataSink(), name='ds')
     ds.inputs.base_directory = SinkDir
     ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
+
+    # Save outputs which are important
+    ds_qc = pe.Node(interface=io.DataSink(),
+                 name='ds_qc')
+    ds_qc.inputs.base_directory = QCDir
+    ds_qc.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".png")]
 
     def pickindex(vec, i):
         #print "************************************************************************************************************************************************"
@@ -105,5 +124,8 @@ def fast_workflow(
     analysisflow.connect(fast, ('probability_maps', pickindex, 0), ds, 'fast_csf')
     analysisflow.connect(fast, ('probability_maps', pickindex, 1), ds, 'fast_gm')
     analysisflow.connect(fast, ('probability_maps', pickindex, 2), ds, 'fast_wm')
+
+    analysisflow.connect(fast, 'partial_volume_map', slicer, 'in_file')
+    analysisflow.connect(slicer, 'out_file', ds_qc, 'segmentation')
 
     return analysisflow

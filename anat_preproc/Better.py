@@ -44,6 +44,9 @@ def bet_workflow(
     import nipype.interfaces.fsl as fsl
     import nipype.interfaces.io as io
 
+    QCDir = os.path.abspath(SinkDir + "/QC")
+    if not os.path.exists(QCDir):
+        os.makedirs(QCDir)
     SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
@@ -61,18 +64,32 @@ def bet_workflow(
     bet.inputs.mask=True
     #bet.inputs.robust=Robust
 
+    # Create png images for quality check
+    slicer = pe.MapNode(interface=fsl.Slicer(all_axial=True),
+                        iterfield=['in_file'],
+                        name='slicer')
+    slicer.inputs.image_width = 5000
+    slicer.inputs.out_file = "func2anat_subj"
+    # set output all axial slices into one picture
+    slicer.inputs.all_axial = True
+
     #Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['brain',
                                                            'brain_mask',
                                                            'skull']),
                          name = 'outputspec')
 
-    #Save outputs which are important
-    ds=pe.Node(interface=io.DataSink(),
-               name='ds')
-    ds.inputs.base_directory=SinkDir
-    #ds.inputs.container=SinkDir+"anat"
+    # Save outputs which are important
+    ds = pe.Node(interface=io.DataSink(),
+                 name='ds')
+    ds.inputs.base_directory = SinkDir
     ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
+
+    # Save outputs which are important
+    ds_qc = pe.Node(interface=io.DataSink(),
+                 name='ds_qc')
+    ds_qc.inputs.base_directory = QCDir
+    ds_qc.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".png")]
 
     #Create a workflow to connect all those nodes
     analysisflow = nipype.Workflow('betWorkflow') # The name here determine the folder of the workspace
@@ -83,7 +100,9 @@ def bet_workflow(
     analysisflow.connect(bet, 'out_file', outputspec, 'brain')
     analysisflow.connect(bet, 'out_file', ds, 'bet_brain')
     analysisflow.connect(bet, 'mask_file', ds, 'bet_mask')
+    analysisflow.connect(bet, 'out_file', slicer, 'in_file')
     analysisflow.connect(inputspec, 'anat', outputspec, 'skull')
+    analysisflow.connect(slicer, 'out_file', ds_qc, 'brain_extraction')
 
     return analysisflow
 

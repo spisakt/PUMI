@@ -5,21 +5,38 @@ import PUMI.anat_preproc.Faster as fast
 import PUMI.anat_preproc.Anat2MNI as anat2mni
 import nipype.interfaces.utility as utility
 
-def AnatProc(stdreg=anat2mni.RegType.FSL, SinkDir=".", SinkTag="anat_preproc"):
+class RegType:
+    FSL = 1
+    ANTS = 2
+
+def AnatProc(stdreg=RegType.FSL, SinkDir=".", SinkTag="anat_preproc"):
     """
         Performs processing of anatomical images:
-        - reorient
         - brain extraction
         - tissue type segmentation
         - spatial standardization (with either FSL or ANTS)
 
+        Images should be already reoriented, e.g. with fsl fslreorient2std (see scripts/ex_pipeline.py)
+
         Workflow inputs:
-            :param anat: The anatomical image file.
-            :param SinkDir:
-            :param SinkTag: The output directiry in which the returned images (see workflow outputs) could be found.
+            :param func: The functional image file.
+            :param SinkDir: where to write important ouputs
+            :param SinkTag: The output directory in which the returned images (see workflow outputs) could be found.
 
         Workflow outputs:
-            :param
+            :param brain: brain extracted image in subject space
+            :param brain_mask: brain mask in subject space
+            :param skull: full head image in subjacet space
+            :param probmap_gm: gray matter probability map
+            :param probmap_wm: white matter probability map
+            :param probmap_csf: CSF probability map
+            :param parvol_gm: gray matter partial volume map
+            :param parvol_wm: white matter partial volume map
+            :param parvol_csf: CSF partial volume map
+            :param partvol_map: hard segmented tissue map
+            :param anat2mni_warpfield: spatial standardization warping field
+            :param std_brain: spatially standardised brain extracted image
+            :param stdregtype: type of stabndard registration: FSL=1, ANTS=2
 
 
 
@@ -39,7 +56,11 @@ def AnatProc(stdreg=anat2mni.RegType.FSL, SinkDir=".", SinkTag="anat_preproc"):
     # build the actual pipeline
     mybet = bet.bet_workflow(SinkDir=SinkDir)
     myfast = fast.fast_workflow(SinkDir=SinkDir)
-    myanat2mni = anat2mni.anat2mni_workflow(SinkDir=SinkDir)
+
+    if (stdreg==RegType.FSL):
+        myanat2mni = anat2mni.anat2mni_fsl_workflow(SinkDir=SinkDir)
+    else:  # ANTS
+        myanat2mni = anat2mni.anat2mni_ants_workflow(SinkDir=SinkDir)
 
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['brain',
@@ -53,10 +74,11 @@ def AnatProc(stdreg=anat2mni.RegType.FSL, SinkDir=".", SinkTag="anat_preproc"):
                                                            'parvol_csf',
                                                            'partvol_map',
                                                            'anat2mni_warpfield',
-                                                           'std_brain']),
+                                                           'std_brain',
+                                                           'stdregtype']),
                          name='outputspec')
 
-
+    outputspec.inputs.stdregtype = stdreg;  # return regtype as well
     # pickindex = lambda x, i: x[i]
     def pickindex(vec, i):
         return [x[i] for x in vec]
