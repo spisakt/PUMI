@@ -250,7 +250,7 @@ def anat2mni_ants_workflow(
     # Save outputs which are important
     ds = pe.Node(interface=io.DataSink(), name='ds_nii')
     ds.inputs.base_directory = SinkDir
-    ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
+    #ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
 
     # Save outputs which for qualitiy check
     ds2 = pe.Node(interface=io.DataSink(), name='ds_qc')
@@ -261,7 +261,8 @@ def anat2mni_ants_workflow(
     outputspec = pe.Node(utility.IdentityInterface(fields=['output_brain',
                                                            'linear_xfm',
                                                            'invlinear_xfm',
-                                                           'nonlinear_xfm']),
+                                                           'nonlinear_xfm',
+                                                           'composite_transform']),
                          name='outputspec')
 
     # Create workflow nad connect nodes

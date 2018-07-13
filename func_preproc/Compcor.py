@@ -50,7 +50,9 @@ def compcor_workflow(SinkDir=".",
     import nipype.interfaces.io as io
     import nipype.interfaces.utility as utility
 
-
+    QCDir = os.path.abspath(SinkDir + "/QC")
+    if not os.path.exists(QCDir):
+        os.makedirs(QCDir)
     SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
@@ -76,11 +78,10 @@ def compcor_workflow(SinkDir=".",
     outputspec = pe.Node(utility.IdentityInterface(fields=['components_file']),
                          name='outputspec')
 
-
-    # Generic datasink module to store structured outputs
-    ds = pe.Node(interface=io.DataSink(),
-                 name='ds')
-    ds.inputs.base_directory = SinkDir
+    # save data out with Datasink
+    ds_text = pe.Node(interface=io.DataSink(), name='ds_txt')
+    ds_text.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".txt")]
+    ds_text.inputs.base_directory = SinkDir
 
     # Create a workflow to connect all those nodes
     analysisflow = nipype.Workflow('compcorWorkflow')
@@ -91,6 +92,6 @@ def compcor_workflow(SinkDir=".",
     analysisflow.connect(func_str2float, 'float', compcor, 'repetition_time')
     analysisflow.connect(inputspec, 'mask_file', compcor, 'mask_files')
     analysisflow.connect(compcor, 'components_file', outputspec, 'components_file')
-
+    analysisflow.connect(compcor, 'components_file', ds_text, 'compcor_noise')
 
     return analysisflow

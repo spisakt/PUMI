@@ -11,7 +11,7 @@ import PUMI.func_preproc.DataCensorer as cens
 import PUMI.func_preproc.MedianAngleCorr as medangcor
 import nipype.interfaces.utility as utility
 
-def FuncProc( SinkDir=".", SinkTag="anat_preproc"):
+def FuncProc( SinkDir=".", SinkTag="func_preproc"):
     """
         Performs processing of functional (resting-state) images:
 
@@ -37,7 +37,7 @@ def FuncProc( SinkDir=".", SinkTag="anat_preproc"):
         """
 
     # Basic interface class generates identity mappings
-    inputspec = pe.Node(utility.IdentityInterface(fields=['func']),
+    inputspec = pe.Node(utility.IdentityInterface(fields=['func', 'cc_noise_roi']),
                         name='inputspec')
 
     # build the actual pipeline
