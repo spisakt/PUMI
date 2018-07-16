@@ -63,13 +63,18 @@ totalWorkflow.connect([
     (myanatproc, mybbr,
       [('outputspec.skull', 'inputspec.skull')]),
     (myanatproc, mybbr,
-      [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation')])
+      [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
+       ('outputspec.probmap_csf','inputspec.anat_csf_segmentation')]),
+    (myonevol, mybbr,
+     [('outputspec.func1vol', 'inputspec.func')])
     ])
 
 # functional part
 totalWorkflow.connect([
     (reorient_func, myfuncproc,
      [('out_file', 'inputspec.func')]),
+    (mybbr,myfuncproc,
+     [('outputspec.anatmask_infuncspace','inputspec.masksforcompcor')])
     ])
 
 

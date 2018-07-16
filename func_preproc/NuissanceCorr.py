@@ -5,7 +5,7 @@ def nuissremov_workflow(SinkDir=".",
     The script uses the noise information to regress it out from the data.
    Workflow inputs:
         :param in_file: The reoriented an motion corrected functional data.
-        :param desing_file: A matrix which contains all the noise regressor.
+        :param desing_file: A matrix which contains all the nuissance regressor(motion+compcor noise+...).
         :param filter_all: To regress out all the columns of the desing matrix (default: True)
         :param SinkDir:
         :param SinkTag: The output directory in which the returned images (see workflow outputs) could be found in a subdirectory directory specific for this workflow.
