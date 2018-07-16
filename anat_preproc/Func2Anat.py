@@ -36,15 +36,14 @@ def bbr_workflow(SinkDir=".",
 
 
         """
-    import sys
     import os
-    import nipype
     import nipype.pipeline as pe
     from nipype.interfaces.utility import Function
     import nipype.interfaces.utility as utility
     import nipype.interfaces.fsl as fsl
     import nipype.interfaces.io as io
     import PUMI.func_preproc.Onevol as onevol
+    import PUMI.utils.QC as qc
 
     QCDir = os.path.abspath(SinkDir + "/QC")
     if not os.path.exists(QCDir):
@@ -101,25 +100,14 @@ def bbr_workflow(SinkDir=".",
     bbreg_func_to_anat.inputs.dof = 6
 
     # Create png images for quality check
-    slicer = pe.MapNode(interface=fsl.Slicer(all_axial=True),
-                        iterfield=['in_file', 'image_edges'],
-                        name='slicer')
-    slicer.inputs.image_width = 5000
-    slicer.inputs.out_file = "func2anat_subj"
-    # set output all axial slices into one picture
-    slicer.inputs.all_axial = True
+
+    myqc = qc.vol2png("func2anat")
 
     # Save outputs which are important
     ds = pe.Node(interface=io.DataSink(),
                  name='ds_nii')
     ds.inputs.base_directory = SinkDir
     ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
-
-    # Save outputs which are important
-    ds2 = pe.Node(interface=io.DataSink(),
-                 name='ds_qc')
-    ds2.inputs.base_directory = QCDir
-    ds2.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".png")]
 
     # Define outputs of the workflow
     #TODO inverted transformation matrix node is necessery
@@ -147,9 +135,9 @@ def bbr_workflow(SinkDir=".",
     analysisflow.connect(inputspec, 'skull',linear_reg, 'reference')
     analysisflow.connect(linear_reg, 'out_matrix_file', outputspec, 'func_to_anat_linear_xfm_nobbreg')
     analysisflow.connect(bbreg_func_to_anat, 'out_file', ds, 'bbr')
-    analysisflow.connect(bbreg_func_to_anat, 'out_file', slicer, 'in_file')
-    analysisflow.connect(wm_bb_mask, 'out_file', slicer, 'image_edges')
-    analysisflow.connect(slicer, 'out_file', ds2, 'func2anat')
+    analysisflow.connect(bbreg_func_to_anat, 'out_file', myqc, 'inputspec.bg_image')
+    analysisflow.connect(wm_bb_mask, 'out_file', myqc, 'inputspec.overlay_image')
+
 
     return analysisflow
 

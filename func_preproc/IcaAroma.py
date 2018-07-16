@@ -1,5 +1,5 @@
 def aroma_workflow(SinkDir = ".",
-                SinkTag = "func_preproc",
+                SinkTag = "aroma",
                 WorkingDirectory="."):
 
     """
@@ -31,9 +31,10 @@ def aroma_workflow(SinkDir = ".",
     import nipype.interfaces.io as io
     import os
 
-    QCDir = os.path.abspath(SinkDir + "/QC")
+    QCDir = os.path.abspath(SinkDir + "QC")
     if not os.path.exists(QCDir):
         os.makedirs(QCDir)
+
     SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
