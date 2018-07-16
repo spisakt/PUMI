@@ -8,16 +8,16 @@ def bbr_workflow(SinkDir=".",
         `source: https://fcp-indi.github.io/docs/developer/_modules/CPAC/registration/registration.html`
 
 
-        BBR registration of functional image to standard.
+        BBR registration of functional image to anat.
 
         Workflow inputs:
-            :param func: One volume of the 4D fMRI (The one which os the closest to the fieldmap recording in time should be chosen).
+            :param func: One volume of the 4D fMRI (The one which is the closest to the fieldmap recording in time should be chosen- e.g: if fieldmap was recorded after the fMRI the last volume of it should be chosen).
             :param skull: The oriented high res T1w image.
             :param anat_wm_segmentation: WM probability mask in .
             :param anat_csf_segmentation: CSF probability mask in
             :param bbr_schedule: Parameters which specifies BBR options.
             :param SinkDir:
-            :param SinkTag: The output directiry in which the returned images (see workflow outputs) could be found.
+            :param SinkTag: The output directory in which the returned images (see workflow outputs) could be found.
 
         Workflow outputs:
 
@@ -62,15 +62,15 @@ def bbr_workflow(SinkDir=".",
                                                        'anat_csf_segmentation',
                                                        'bbr_schedule']),
                         name='inputspec')
-
-    inputspec.inputs.bbr_schedule = fsldir + "/etc/flirtsch/bbr.sch"
+    # thisi s the default
+    #inputspec.inputs.bbr_schedule = fsldir + "/etc/flirtsch/bbr.sch"
     #inputspec.inputs.func=func
     #inputspec.inputs.skull=skull
     #inputspec.inputs.anat_wm_segmentation=anat_wm_segmentation
 
     myonevol = onevol.onevol_workflow()
 
-    # trilinear interpolation is used by default
+    # trilinear interpolation is used by default in linear registration for func to anat
     linear_reg = pe.MapNode(interface=fsl.FLIRT(),
                             iterfield=['in_file', 'reference'],
                             name='linear_func_to_anat')
@@ -90,27 +90,15 @@ def bbr_workflow(SinkDir=".",
     csf_bb_mask.inputs.op_string = '-thr 0.5 -bin'
 
     # add the CSF and WM masks
-    add_masks=pe.MapNode(interface=fsl.ImageMaths(),
-                         iterfield=['in_file','in_file2'],
-                         name='add_masks')
-    add_masks.inputs.op_string = ' -add'
-
-    # calculate the inverse of the transformation matrix (of func to anat)
-    convertmatrix=pe.MapNode(interface=fsl.ConvertXFM(),
-                             iterfield=['in_file'],
-                             name="convertmatrix")
-    convertmatrix.inputs.invert_xfm=True
-
-    # use the invers registration (anat to func) with the help of the bbr transformation matrix (func to anat)
-    reg_anatmasks_to_func=pe.MapNode(interface=fsl.FLIRT(),
-                          iterfield=['in_file','reference','in_matrix_file'],
-                          name='anatmasks_to_func')
-    reg_anatmasks_to_func.inputs.apply_xfm=True
+    #add_masks=pe.MapNode(interface=fsl.ImageMaths(),
+    #                     iterfield=['in_file','in_file2'],
+    #                     name='add_masks')
+    #add_masks.inputs.op_string = ' -add'
 
     # A function is defined for define bbr argumentum which says flirt to perform bbr registration
     # for each element of the list, due to MapNode
     def bbreg_args(bbreg_target):
-        return '-cost bbr -wmseg ' + bbreg_target
+        return '-cost bbr -wm_seg ' + bbreg_target
 
     bbreg_arg_convert = pe.MapNode(interface=Function(input_names=["bbreg_target"],
                                                     output_names=["arg"],
@@ -119,12 +107,28 @@ def bbr_workflow(SinkDir=".",
                                    name="bbr_arg_converter"
                                  )
 
-    # BBR regostration within the FLIRT node
+    # BBR registration within the FLIRT node
     bbreg_func_to_anat = pe.MapNode(interface=fsl.FLIRT(),
                                     iterfield=['in_file', 'reference', 'in_matrix_file', 'args'],
                                     name='bbreg_func_to_anat')
     bbreg_func_to_anat.inputs.dof = 6
 
+    # calculate the inverse of the transformation matrix (of func to anat)
+    convertmatrix = pe.MapNode(interface=fsl.ConvertXFM(),
+                               iterfield=['in_file'],
+                               name="convertmatrix")
+    convertmatrix.inputs.invert_xfm = True
+
+    # use the invers registration (anat to func) to transform anatomical csf mask
+    reg_anatmask_to_func1 = pe.MapNode(interface=fsl.FLIRT(),
+                                       iterfield=['in_file', 'reference', 'in_matrix_file'],
+                                       name='anatmasks_to_func')
+    reg_anatmask_to_func1.inputs.apply_xfm = True
+    # use the invers registration (anat to func) to transform anatomical wm mask
+    reg_anatmask_to_func2 = pe.MapNode(interface=fsl.FLIRT(),
+                                       iterfield=['in_file', 'reference', 'in_matrix_file'],
+                                       name='anatmasks_to_func')
+    reg_anatmask_to_func2.inputs.apply_xfm = True
     # Create png images for quality check
 
     myqc = qc.vol2png("func2anat")
@@ -136,39 +140,40 @@ def bbr_workflow(SinkDir=".",
     ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
 
     # Define outputs of the workflow
-    #TODO inverted transformation matrix node is necessery
-    outputspec = pe.Node(utility.IdentityInterface(fields=['func_to_anat_linear_xfm',
-                                                           'func_to_anat_linear_xfm_nobbreg',
-                                                        # 'func_to_mni_linear_xfm',
-                                                        # 'mni_to_func_linear_xfm',
-                                                        # 'anat_wm_edge',
-                                                           'anatmask_infuncspace',
-                                                            'func_sample2anat']),
+    outputspec = pe.Node(utility.IdentityInterface(fields=[ 'func_sample2anat',
+                                                            'func_to_anat_linear_xfm',
+                                                            'anat_to_func_linear_xfm',
+                                                            'csf_mask_in funcspace',
+                                                            'wm_mask_in funcspace']),
                          name='outputspec')
 
     analysisflow = pe.Workflow(name='Func2Anat')
-
-    analysisflow.connect(inputspec, 'bbr_schedule', bbreg_func_to_anat, 'schedule')
-    analysisflow.connect(wm_bb_mask, 'out_file', bbreg_arg_convert, 'bbreg_target')
-    analysisflow.connect(bbreg_arg_convert, 'arg', bbreg_func_to_anat, 'args')
-    analysisflow.connect(inputspec, 'anat_wm_segmentation', wm_bb_mask, 'in_file')
-    analysisflow.connect(inputspec, 'func', myonevol, 'inputspec.func')
-    analysisflow.connect(myonevol, 'outputspec.func1vol', bbreg_func_to_anat, 'in_file')
-    analysisflow.connect(inputspec, 'anat_csf_segmentation', csf_bb_mask, 'in_file')
-    analysisflow.connect(wm_bb_mask, 'out_file', add_masks, 'in_file')
-    analysisflow.connect(csf_bb_mask,'out_file', add_masks, 'in_file2')
-    analysisflow.connect(add_masks, 'out_file',reg_anatmasks_to_func,'in_file')
-    analysisflow.connect(convertmatrix, 'out_file',reg_anatmasks_to_func,'in_matrix_file')
-    analysisflow.connect(inputspec, 'func',reg_anatmasks_to_func,'reference')
-    analysisflow.connect(reg_anatmasks_to_func,'out_file',outputspec, 'anatmask_infuncspace')
-    analysisflow.connect(inputspec, 'skull', bbreg_func_to_anat, 'reference')
-    analysisflow.connect(linear_reg, 'out_matrix_file', bbreg_func_to_anat, 'in_matrix_file')
-    analysisflow.connect(bbreg_func_to_anat, 'out_matrix_file', outputspec, 'func_to_anat_linear_xfm')
-    analysisflow.connect(bbreg_func_to_anat, 'out_file', outputspec, 'func_sample2anat')
-    analysisflow.connect(bbreg_func_to_anat, 'out_matrix_file', convertmatrix, 'in_file')
+    analysisflow.base_dir = '.'
     analysisflow.connect(inputspec, 'func', linear_reg, 'in_file')
     analysisflow.connect(inputspec, 'skull',linear_reg, 'reference')
-    analysisflow.connect(linear_reg, 'out_matrix_file', outputspec, 'func_to_anat_linear_xfm_nobbreg')
+    #analysisflow.connect(inputspec, 'bbr_schedule', bbreg_func_to_anat, 'schedule')
+    analysisflow.connect(linear_reg, 'out_matrix_file', bbreg_func_to_anat, 'in_matrix_file')
+    analysisflow.connect(inputspec, 'func', myonevol, 'inputspec.func')
+    analysisflow.connect(myonevol, 'outputspec.func1vol', bbreg_func_to_anat, 'in_file')
+    analysisflow.connect(inputspec, 'anat_wm_segmentation', bbreg_arg_convert, 'bbreg_target')
+    analysisflow.connect(bbreg_arg_convert, 'arg', bbreg_func_to_anat, 'args')
+    analysisflow.connect(inputspec, 'skull', bbreg_func_to_anat, 'reference')
+    analysisflow.connect(bbreg_func_to_anat, 'out_matrix_file', convertmatrix, 'in_file')
+    analysisflow.connect(convertmatrix, 'out_file',reg_anatmask_to_func1,'in_matrix_file')
+    analysisflow.connect(inputspec, 'func',reg_anatmask_to_func1,'reference')
+    analysisflow.connect(csf_bb_mask,'out_file', reg_anatmask_to_func1, 'in_file')
+    analysisflow.connect(convertmatrix, 'out_file',reg_anatmask_to_func2,'in_matrix_file')
+    analysisflow.connect(inputspec, 'func',reg_anatmask_to_func2,'reference')
+    analysisflow.connect(wm_bb_mask,'out_file', reg_anatmask_to_func2, 'in_file')
+    analysisflow.connect(inputspec, 'anat_wm_segmentation', wm_bb_mask, 'in_file')
+    analysisflow.connect(inputspec, 'anat_csf_segmentation', csf_bb_mask, 'in_file')
+
+    analysisflow.connect(bbreg_func_to_anat, 'out_file', outputspec, 'func_sample2anat')
+    analysisflow.connect(bbreg_func_to_anat, 'out_matrix_file', outputspec, 'func_to_anat_linear_xfm')
+    analysisflow.connect(reg_anatmask_to_func1,'out_file',outputspec, 'csf_mask_in funcspace')
+    analysisflow.connect(reg_anatmask_to_func2,'out_file',outputspec, 'wm_mask_in funcspace')
+    analysisflow.connect(convertmatrix, 'out_file',outputspec,'anat_to_func_linear_xfm')
+
     analysisflow.connect(bbreg_func_to_anat, 'out_file', ds, 'bbr')
     analysisflow.connect(bbreg_func_to_anat, 'out_file', myqc, 'inputspec.bg_image')
     analysisflow.connect(wm_bb_mask, 'out_file', myqc, 'inputspec.overlay_image')
