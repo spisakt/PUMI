@@ -19,6 +19,7 @@ def FuncProc( SinkDir=".", SinkTag="anat_preproc"):
 
         Workflow inputs:
             :param func: The functional image file.
+            :param masksforcompcor: Mask image for compcor calculations( the default is the csf and wm mask in the functional space)
             :param SinkDir: where to write important ouputs
             :param SinkTag: The output directory in which the returned images (see workflow outputs) could be found.
 
@@ -37,14 +38,15 @@ def FuncProc( SinkDir=".", SinkTag="anat_preproc"):
         """
 
     # Basic interface class generates identity mappings
-    inputspec = pe.Node(utility.IdentityInterface(fields=['func']),
+    inputspec = pe.Node(utility.IdentityInterface(fields=['func','masksforcompcor']),
                         name='inputspec')
 
     # build the actual pipeline
     #myonevol = onevol.onevol_workflow(SinkDir=SinkDir)
     mymc = mc.mc_workflow(SinkDir=SinkDir)
-    #mycmpcor = cmpcor.compcor_workflow(SinkDir=SinkDir)
-    #mynuisscor = nuisscorr.nuissremov_workflow(SinkDir=SinkDir)
+    mycmpcor = cmpcor.compcor_workflow(SinkDir=SinkDir)
+    myconcat=concat.concat_workflow(SinkDir=SinkDir)
+    mynuisscor = nuisscorr.nuissremov_workflow(SinkDir=SinkDir)
     #mytmpfilt = tmpfilt.tmpfilt_workflow(SinkDir=SinkDir)
     #mycens = cens.datacens_workflow(SinkDir=SinkDir)
     #mymedangcor = medangcor.mac_workflow(SinkDir=SinkDir)
@@ -58,8 +60,9 @@ def FuncProc( SinkDir=".", SinkTag="anat_preproc"):
     wf_mc.base_dir = '.'
 
     wf_mc.connect([
-        (inputspec, mymc, [('func', 'inputspec.func')])
-        #(mymc, mycmpcor, [('outputspec.func_out_file', 'inputspec.func_aligned')]),
+        (inputspec, mymc, [('func', 'inputspec.func')]),
+        (inputspec,mycmpcor,[('masksforcompcor','inputspec.mask_file')]),
+        (mymc, mycmpcor, [('outputspec.func_out_file', 'inputspec.func_aligned')]),
                    #(myanat2funcmask, mycmpcor, [('outputspec.mask', 'inputspec.mask')]),
                    #(mycompcor, myconcat, [('outputspec.components_file', 'inputspec.arg1')]),
                    #(mymc, myconcat, [('outputspec.mvpar_file', 'inputspec.arg2')]),

@@ -15,6 +15,9 @@ def float2string(float):
 def string2float(str):
     return float(str)
 
+def concatenate(*arg):
+    import numpy as np
+    return np.concatenate(arg,axis=1)
 
 ###############################################
 
@@ -33,3 +36,7 @@ Float2Str = Function(input_names=['float'],
 Str2Float = Function(input_names=['str'],
                        output_names=['float'],
                        function=string2float)
+
+Concatenate= Function(input_names=['args'],
+                 output_names=['matrix'],
+                 function=concatenate)
