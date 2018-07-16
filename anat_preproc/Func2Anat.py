@@ -59,6 +59,7 @@ def bbr_workflow(SinkDir=".",
     inputspec = pe.Node(utility.IdentityInterface(fields=['func',
                                                        'skull',
                                                        'anat_wm_segmentation',
+                                                       'anat_csf_segmentation',
                                                        'bbr_schedule']),
                         name='inputspec')
 
@@ -92,7 +93,7 @@ def bbr_workflow(SinkDir=".",
     add_masks=pe.MapNode(interface=fsl.ImageMaths(),
                          iterfield=['in_file','in_file2'],
                          name='add_masks')
-    add_masks.inputs.op_string('-add')
+    add_masks.inputs.op_string = ' -add'
 
     # calculate the inverse of the transformation matrix (of func to anat)
     convertmatrix=pe.MapNode(interface=fsl.ConvertXFM(),
@@ -137,12 +138,12 @@ def bbr_workflow(SinkDir=".",
     # Define outputs of the workflow
     #TODO inverted transformation matrix node is necessery
     outputspec = pe.Node(utility.IdentityInterface(fields=['func_to_anat_linear_xfm',
-                                                           'func_to_anat_linear_xfm_nobbreg'
+                                                           'func_to_anat_linear_xfm_nobbreg',
                                                         # 'func_to_mni_linear_xfm',
                                                         # 'mni_to_func_linear_xfm',
                                                         # 'anat_wm_edge',
-                                                           'anatmask_infuncspace']),
-                                                        'func_sample2anat']),
+                                                           'anatmask_infuncspace',
+                                                            'func_sample2anat']),
                          name='outputspec')
 
     analysisflow = pe.Workflow(name='Func2Anat')
@@ -160,13 +161,11 @@ def bbr_workflow(SinkDir=".",
     analysisflow.connect(convertmatrix, 'out_file',reg_anatmasks_to_func,'in_matrix_file')
     analysisflow.connect(inputspec, 'func',reg_anatmasks_to_func,'reference')
     analysisflow.connect(reg_anatmasks_to_func,'out_file',outputspec, 'anatmask_infuncspace')
-    analysisflow.connect(inputspec, 'func', bbreg_func_to_anat, 'in_file')
     analysisflow.connect(inputspec, 'skull', bbreg_func_to_anat, 'reference')
     analysisflow.connect(linear_reg, 'out_matrix_file', bbreg_func_to_anat, 'in_matrix_file')
     analysisflow.connect(bbreg_func_to_anat, 'out_matrix_file', outputspec, 'func_to_anat_linear_xfm')
     analysisflow.connect(bbreg_func_to_anat, 'out_file', outputspec, 'func_sample2anat')
     analysisflow.connect(bbreg_func_to_anat, 'out_matrix_file', convertmatrix, 'in_file')
-    analysisflow.connect(bbreg_func_to_anat, 'out_file', outputspec, 'func_sample2anat')
     analysisflow.connect(inputspec, 'func', linear_reg, 'in_file')
     analysisflow.connect(inputspec, 'skull',linear_reg, 'reference')
     analysisflow.connect(linear_reg, 'out_matrix_file', outputspec, 'func_to_anat_linear_xfm_nobbreg')
