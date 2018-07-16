@@ -38,7 +38,7 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
                       iterfield=['in_file'],
                       name="reorient_func")
 
-myanatproc = anatproc.AnatProc(stdreg=anatproc.RegType.ANTS)
+myanatproc = anatproc.AnatProc(stdreg=anatproc.RegType.FSL)
 
 mybbr = bbr.bbr_workflow()
 
