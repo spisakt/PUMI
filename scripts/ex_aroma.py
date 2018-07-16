@@ -4,15 +4,15 @@ import sys
 # az importalasnal az ~_preproc utan a .fajlnev-et kell megadni
 import nipype
 import nipype.pipeline as pe
-# import the defined workflows from the anat_preproc folder
+
 import nipype.interfaces.io as nio
 import nipype.interfaces.fsl as fsl
 import PUMI.AnatProc as anatproc
-import PUMI.FuncProc as funcproc
-# import the necessary workflows from the func_preproc folder
+import PUMI.func_preproc.IcaAroma as aroma
 import PUMI.anat_preproc.Func2Anat as bbr
+from nipype.interfaces import fsl
+import PUMI.func_preproc.MotionCorrecter as mc
 import os
-
 # parse command line arguments
 if (len(sys.argv) <= 2):
     print("Please specify command line arguments!")
@@ -24,12 +24,13 @@ if (len(sys.argv) <= 2):
 
 # create data grabber
 datagrab = pe.Node(nio.DataGrabber(outfields=['func', 'struct']), name='data_grabber')
-
 datagrab.inputs.base_directory = os.getcwd()  # do we need this?
 datagrab.inputs.template = "*"  # do we need this?
 datagrab.inputs.field_template = dict(func=sys.argv[2],
                                       struct=sys.argv[1])  # specified by command line arguments
 datagrab.inputs.sort_filelist = True
+
+
 # build the actual pipeline
 reorient_struct = pe.MapNode(fsl.utils.Reorient2Std(),
                       iterfield=['in_file'],
@@ -38,16 +39,20 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
                       iterfield=['in_file'],
                       name="reorient_func")
 
-myanatproc = anatproc.AnatProc(stdreg=anatproc.RegType.ANTS)
+myanatproc = anatproc.AnatProc(stdreg=anatproc.RegType.FSL)
+
+mymc = mc.mc_workflow()
 
 mybbr = bbr.bbr_workflow()
 
-def pickindex(vec, i):
-    return [x[i] for x in vec]
+mybet = pe.MapNode(interface=fsl.BET(frac=0.3, mask=True),
+                   iterfield=['in_file'],
+                   name="func_bet")
 
-myfuncproc = funcproc.FuncProc()
+# todo: smooth!!!!
+myaroma = aroma.aroma_workflow()
 
-totalWorkflow = nipype.Workflow('totalWorkflow')
+totalWorkflow = nipype.Workflow('exAROMA')
 totalWorkflow.base_dir = '.'
 
 # anatomical part and func2anat
@@ -63,20 +68,21 @@ totalWorkflow.connect([
     (myanatproc, mybbr,
       [('outputspec.skull', 'inputspec.skull')]),
     (myanatproc, mybbr,
-      [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
-       ('outputspec.probmap_csf','inputspec.anat_csf_segmentation')]),
-    (myonevol, mybbr,
-     [('outputspec.func1vol', 'inputspec.func')])
-    ])
-
-# functional part
-totalWorkflow.connect([
-    (reorient_func, myfuncproc,
+      [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation')]),
+    (reorient_func, mymc,
      [('out_file', 'inputspec.func')]),
-    (mybbr,myfuncproc,
-     [('outputspec.anatmask_infuncspace','inputspec.masksforcompcor')])
+    (reorient_func, mybet,
+     [('out_file', 'in_file')]),
+    (mymc, myaroma,
+     [('outputspec.func_out_file', 'inputspec.mc_func'),
+      ('outputspec.mc_par_file', 'inputspec.mc_par')]),
+    (mybbr, myaroma,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.mat_file')]),
+    (myanatproc, myaroma,
+     [('outputspec.anat2mni_warpfield', 'inputspec.fnirt_warp_file')]),
+    (mybet, myaroma,
+     [('mask_file', 'inputspec.mask')])
     ])
-
 
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True);
 totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False);
