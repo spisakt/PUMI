@@ -12,6 +12,7 @@ import PUMI.FuncProc as funcproc
 # import the necessary workflows from the func_preproc folder
 import PUMI.anat_preproc.Func2Anat as bbr
 import os
+import PUMI.utils.addimages as adding
 
 # parse command line arguments
 if (len(sys.argv) <= 2):
@@ -41,6 +42,9 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
 myanatproc = anatproc.AnatProc(stdreg=anatproc.RegType.FSL)
 
 mybbr = bbr.bbr_workflow()
+# Add arbitrary number of nii images wthin the same space. The default is to add csf and wm masks for anatcompcor calculation.
+myadding=adding.addimgs_workflow(numimgs=2)
+
 
 def pickindex(vec, i):
     return [x[i] for x in vec]
@@ -61,10 +65,16 @@ totalWorkflow.connect([
     (reorient_func, mybbr,
      [('out_file', 'inputspec.func')]),
     (myanatproc, mybbr,
-      [('outputspec.skull', 'inputspec.skull')]),
-    (myanatproc, mybbr,
-      [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
-       ('outputspec.probmap_csf','inputspec.anat_csf_segmentation')])
+      [('outputspec.skull', 'inputspec.skull'),
+       ('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
+       ('outputspec.probmap_csf', 'inputspec.anat_csf_segmentation')]),
+    (datagrab,myfuncproc,
+     ['func','inputspec.func']),
+    (mybbr,myadding,
+     [('outputspec.csf_mask_in funcspace','inputspec.par1'),
+      ('outputspec.wm_mask_in funcspace','inputspec.par2')]),
+    (myadding,myfuncproc,
+     [('outputspec.added_imgs','inputspec.cc_noise_roi')])
     ])
 
 # functional part

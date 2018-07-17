@@ -15,7 +15,7 @@ def mc_workflow(SinkDir = ".",
         :param func: The reoriented functional file.
         :param ref_vol: The index of the volume which the rigid body registration (motion correction) will use as reference.
         The default is the last volume which is returned by the info_get.tMinMax function.
-        The reason of this is because the last volume is closest to the fieldmap.
+        The reason of this is because the last volume is closest to the fieldmapin the PAINTER study.
         :param SinkDir:
         :param SinkTag: The output directory in which the returned images (see workflow outputs) could be found in a subdirectory directory specific for this workflow..
 

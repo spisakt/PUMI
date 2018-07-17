@@ -15,7 +15,7 @@ def float2string(float):
 
 def string2float(str):
     return float(str)
-
+# Concatenate txt files column wise to the regress out nuissance variables from the data
 def concatenate(par1, par2='', par3='', par4='', par5='', par6='', par7='', par8='', par9='', par10=''):
     import os
     import numpy as np

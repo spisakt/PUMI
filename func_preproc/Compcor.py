@@ -12,7 +12,7 @@ def compcor_workflow(SinkDir=".",
 
                Workflow inputs:
                    :param func_aligned: The reoriented and realigned functional image.
-                   :param mask_files: Mask files which determine ROI(s).
+                   :param mask_files: Mask files which determine ROI(s). The default mask is the
                    :param components_file
                    :param num_componenets:
                    :param pre_filter: Detrend time series prior to component extraction.
