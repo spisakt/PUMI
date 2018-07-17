@@ -121,13 +121,13 @@ def bbr_workflow(SinkDir=".",
 
     # use the invers registration (anat to func) to transform anatomical csf mask
     reg_anatmask_to_func1 = pe.MapNode(interface=fsl.FLIRT(),
-                                       iterfield=['in_file', 'reference', 'in_matrix_file'],
-                                       name='anatmasks_to_func')
+                                       iterfield=['in_file', 'reference', 'in_matrix_file','apply_xfm'],
+                                       name='anatmasks_to_func1')
     reg_anatmask_to_func1.inputs.apply_xfm = True
     # use the invers registration (anat to func) to transform anatomical wm mask
     reg_anatmask_to_func2 = pe.MapNode(interface=fsl.FLIRT(),
-                                       iterfield=['in_file', 'reference', 'in_matrix_file'],
-                                       name='anatmasks_to_func')
+                                       iterfield=['in_file', 'reference', 'in_matrix_file','apply_xfm'],
+                                       name='anatmasks_to_func2')
     reg_anatmask_to_func2.inputs.apply_xfm = True
     # Create png images for quality check
 

@@ -43,6 +43,7 @@ myanatproc = anatproc.AnatProc(stdreg=anatproc.RegType.FSL)
 
 mybbr = bbr.bbr_workflow()
 # Add arbitrary number of nii images wthin the same space. The default is to add csf and wm masks for anatcompcor calculation.
+
 myadding=adding.addimgs_workflow(numimgs=2)
 
 
@@ -68,25 +69,24 @@ totalWorkflow.connect([
       [('outputspec.skull', 'inputspec.skull'),
        ('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
        ('outputspec.probmap_csf', 'inputspec.anat_csf_segmentation')]),
-    (datagrab,myfuncproc,
-     ['func','inputspec.func']),
-    (mybbr,myadding,
-     [('outputspec.csf_mask_in funcspace','inputspec.par1'),
-      ('outputspec.wm_mask_in funcspace','inputspec.par2')]),
-    (myadding,myfuncproc,
-     [('outputspec.added_imgs','inputspec.cc_noise_roi')])
+
     ])
 
 # functional part
 totalWorkflow.connect([
     (reorient_func, myfuncproc,
-     [('out_file', 'inputspec.func')])
+     [('out_file', 'inputspec.func')]),
+    (mybbr,myadding,
+     [('outputspec.csf_mask_in funcspace','inputspec.par1'),
+      ('outputspec.wm_mask_in funcspace','inputspec.par2')]),
+    (myadding,myfuncproc,
+     [('outputspec.added_imgs','inputspec.cc_noise_roi')]),
 #    (mybbr,myfuncproc,
 #     [('outputspec.anatmask_infuncspace','inputspec.masksforcompcor')])
     ])
 
 
-totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True);
-totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False);
-totalWorkflow.write_graph('graph.dot', graph2use='colored');
+totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
+#totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
+totalWorkflow.write_graph('graph.dot', graph2use='colored')
 totalWorkflow.run(plugin='MultiProc')

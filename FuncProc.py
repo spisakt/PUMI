@@ -61,7 +61,8 @@ def FuncProc( SinkDir=".", SinkTag="func_preproc"):
     wf_mc.base_dir = '.'
 
     wf_mc.connect([
-        (inputspec, mymc, [('func', 'inputspec.func')])
+        (inputspec, mymc,
+         [('func', 'inputspec.func')]),
         (mymc, mycmpcor, [('outputspec.func_out_file', 'inputspec.func_aligned')]),
         (inputspec, mycmpcor, [('cc_noise_roi', 'inputspec.mask_file')]),
         (mycmpcor,myconc, [('outputspec.components_file','inputspec.par1')]),

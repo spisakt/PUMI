@@ -52,9 +52,9 @@ def addimgs_workflow(numimgs=2,
     inputspec = pe.Node(utility.IdentityInterface(fields=inputs),
                         name='inputspec')
     # Add masks with FSL
-    add_masks=pe.Node(fsl.ImageMaths(fields=inputs),
-                         name='add_masks')
-    add_masks.inputs.op_string = ' -add'
+    add_masks = pe.MapNode(fsl.ImageMaths(op_string=' -add'),
+                         iterfield=inputs,
+                         name="addimgs")
 
     outputspec = pe.Node(utility.IdentityInterface(fields=['added_imgs']),
                                     name='outputspec')
