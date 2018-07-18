@@ -2,9 +2,11 @@ import sys
 import nipype
 import nipype.pipeline as pe
 # import the defined workflow from the func_preproc folder
+import PUMI.utils.Concat as conc
 import PUMI.func_preproc.Onevol as onevol
 import PUMI.func_preproc.MotionCorrecter as mc
 import PUMI.func_preproc.Compcor as cmpcor
+
 import PUMI.func_preproc.NuissanceCorr as nuisscorr
 import PUMI.func_preproc.TemporalFiltering as tmpfilt
 import PUMI.func_preproc.DataCensorer as cens
@@ -43,7 +45,8 @@ def FuncProc( SinkDir=".", SinkTag="func_preproc"):
     # build the actual pipeline
     #myonevol = onevol.onevol_workflow(SinkDir=SinkDir)
     mymc = mc.mc_workflow(SinkDir=SinkDir)
-    #mycmpcor = cmpcor.compcor_workflow(SinkDir=SinkDir)
+    mycmpcor = cmpcor.compcor_workflow(SinkDir=SinkDir)
+    myconc=conc.concat_workflow(numconcat=2,SinkDir=SinkDir)
     #mynuisscor = nuisscorr.nuissremov_workflow(SinkDir=SinkDir)
     #mytmpfilt = tmpfilt.tmpfilt_workflow(SinkDir=SinkDir)
     #mycens = cens.datacens_workflow(SinkDir=SinkDir)
@@ -58,11 +61,12 @@ def FuncProc( SinkDir=".", SinkTag="func_preproc"):
     wf_mc.base_dir = '.'
 
     wf_mc.connect([
-        (inputspec, mymc, [('func', 'inputspec.func')])
-        #(mymc, mycmpcor, [('outputspec.func_out_file', 'inputspec.func_aligned')]),
-                   #(myanat2funcmask, mycmpcor, [('outputspec.mask', 'inputspec.mask')]),
-                   #(mycompcor, myconcat, [('outputspec.components_file', 'inputspec.arg1')]),
-                   #(mymc, myconcat, [('outputspec.mvpar_file', 'inputspec.arg2')]),
+        (inputspec, mymc,
+         [('func', 'inputspec.func')]),
+        (mymc, mycmpcor, [('outputspec.func_out_file', 'inputspec.func_aligned')]),
+        (inputspec, mycmpcor, [('cc_noise_roi', 'inputspec.mask_file')]),
+        (mycmpcor,myconc, [('outputspec.components_file','inputspec.par1')]),
+        (mymc, myconc, [('outputspec.first24_file', 'inputspec.par2')]),
                    #(myconcat, mycmpcor, [('outputspec.out_file', 'inputspec.design_file')]),
                    #(mymc, mycmpcor, [('outputspec.func_out_file', 'inputspec.in_file')]),
                    #(mycmpcor, mytmpfilt, [('outputspec.out_file', 'inputspec.func')]),

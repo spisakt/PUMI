@@ -12,6 +12,7 @@ import PUMI.FuncProc as funcproc
 # import the necessary workflows from the func_preproc folder
 import PUMI.anat_preproc.Func2Anat as bbr
 import os
+import PUMI.utils.addimages as adding
 
 # parse command line arguments
 if (len(sys.argv) <= 2):
@@ -38,9 +39,13 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
                       iterfield=['in_file'],
                       name="reorient_func")
 
-myanatproc = anatproc.AnatProc(stdreg=anatproc.RegType.ANTS)
+myanatproc = anatproc.AnatProc(stdreg=anatproc.RegType.FSL)
 
 mybbr = bbr.bbr_workflow()
+# Add arbitrary number of nii images wthin the same space. The default is to add csf and wm masks for anatcompcor calculation.
+
+myadding=adding.addimgs_workflow(numimgs=2)
+
 
 def pickindex(vec, i):
     return [x[i] for x in vec]
@@ -61,22 +66,27 @@ totalWorkflow.connect([
     (reorient_func, mybbr,
      [('out_file', 'inputspec.func')]),
     (myanatproc, mybbr,
-      [('outputspec.skull', 'inputspec.skull')]),
-    (myanatproc, mybbr,
-      [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
-       ('outputspec.probmap_csf','inputspec.anat_csf_segmentation')])
+      [('outputspec.skull', 'inputspec.skull'),
+       ('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
+       ('outputspec.probmap_csf', 'inputspec.anat_csf_segmentation')]),
+
     ])
 
 # functional part
 totalWorkflow.connect([
     (reorient_func, myfuncproc,
-     [('out_file', 'inputspec.func')])
+     [('out_file', 'inputspec.func')]),
+    (mybbr,myadding,
+     [('outputspec.csf_mask_in funcspace','inputspec.par1'),
+      ('outputspec.wm_mask_in funcspace','inputspec.par2')]),
+    (myadding,myfuncproc,
+     [('outputspec.added_imgs','inputspec.cc_noise_roi')]),
 #    (mybbr,myfuncproc,
 #     [('outputspec.anatmask_infuncspace','inputspec.masksforcompcor')])
     ])
 
 
-totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True);
-totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False);
-totalWorkflow.write_graph('graph.dot', graph2use='colored');
+totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
+#totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
+totalWorkflow.write_graph('graph.dot', graph2use='colored')
 totalWorkflow.run(plugin='MultiProc')

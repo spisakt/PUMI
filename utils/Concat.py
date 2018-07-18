@@ -1,6 +1,7 @@
-def concat_workflow(SinkDir=".",
-                     SinkTag="func_preproc",
-                     WorkingDirectory="."):
+def concat_workflow(numconcat=2,
+                    SinkDir=".",
+                    SinkTag="func_preproc",
+                    WorkingDirectory="."):
     """
 
 
@@ -34,28 +35,42 @@ def concat_workflow(SinkDir=".",
     import nipype.pipeline as pe
     import nipype.interfaces.utility as utility
     import PUMI.utils.utils_convert as utils_convert
+    from nipype.interfaces.utility import Function
 
 
     SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
 
+    inputs=[]
+    for i in range(1, numconcat + 1):
+        inputs.append("par" + str(i))
+
 
     # Basic interface class generates identity mappings
-    inputspec = pe.Node(utility.IdentityInterface(fields=['compcor',
-                                                          'motion']),
+    inputspec = pe.Node(utility.IdentityInterface(fields=inputs),
                         name='inputspec')
-
     # Custom interface to concatenate separate noise design files
-    concatenate = pe.Node(interface=utils_convert.Concatenate,
+    concatenate = pe.Node(interface=Function(input_names=inputs,
+                                             output_names='concat_file',
+                                             function=utils_convert.concatenate),
                                 name='concatenate')
 
 
-    outputspec = pe.Node(utility.IdentityInterface(fields=['noisedesign']),
+    outputspec = pe.Node(utility.IdentityInterface(fields=['concat_file']),
                                     name='outputspec')
-
     # Create workflow
     analysisflow = nipype.Workflow('concatWorkflow')
     analysisflow.base_dir = '.'
+    #connect
+    for i in range(1, numconcat + 1):
+        actparam = "par" + str(i)
+        analysisflow.connect(inputspec, actparam, concatenate, actparam)
+
+
+    analysisflow.connect(concatenate, 'concat_file', outputspec, 'concat_file')
+
+
+    return analysisflow
 
 
