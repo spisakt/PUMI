@@ -62,7 +62,10 @@ def addimgs_workflow(numimgs=2,
     analysisflow = nipype.Workflow('addimgsWorkflow')
     analysisflow.base_dir = '.'
     #connect
-    analysisflow.connect(inputspec, inputs, add_masks, inputs)
+    for i in range(1, numimgs + 1):
+        actparam = "par" + str(i)
+        analysisflow.connect(inputspec, actparam, add_masks, actparam)
+    #analysisflow.connect(inputspec, inputs, add_masks, inputs)
     analysisflow.connect(add_masks, 'out_file', outputspec, 'added_imgs')
 
 

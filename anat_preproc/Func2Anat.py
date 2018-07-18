@@ -98,7 +98,7 @@ def bbr_workflow(SinkDir=".",
     # A function is defined for define bbr argumentum which says flirt to perform bbr registration
     # for each element of the list, due to MapNode
     def bbreg_args(bbreg_target):
-        return '-cost bbr -wm_seg ' + bbreg_target
+        return '-cost bbr -wmseg ' + bbreg_target
 
     bbreg_arg_convert = pe.MapNode(interface=Function(input_names=["bbreg_target"],
                                                     output_names=["arg"],
@@ -120,15 +120,15 @@ def bbr_workflow(SinkDir=".",
     convertmatrix.inputs.invert_xfm = True
 
     # use the invers registration (anat to func) to transform anatomical csf mask
-    reg_anatmask_to_func1 = pe.MapNode(interface=fsl.FLIRT(),
-                                       iterfield=['in_file', 'reference', 'in_matrix_file','apply_xfm'],
+    reg_anatmask_to_func1 = pe.MapNode(interface=fsl.FLIRT(apply_xfm=True),
+                                       iterfield=['in_file', 'reference', 'in_matrix_file'],
                                        name='anatmasks_to_func1')
-    reg_anatmask_to_func1.inputs.apply_xfm = True
+    #reg_anatmask_to_func1.inputs.apply_xfm = True
     # use the invers registration (anat to func) to transform anatomical wm mask
-    reg_anatmask_to_func2 = pe.MapNode(interface=fsl.FLIRT(),
-                                       iterfield=['in_file', 'reference', 'in_matrix_file','apply_xfm'],
+    reg_anatmask_to_func2 = pe.MapNode(interface=fsl.FLIRT(apply_xfm=True),
+                                       iterfield=['in_file', 'reference', 'in_matrix_file'],
                                        name='anatmasks_to_func2')
-    reg_anatmask_to_func2.inputs.apply_xfm = True
+    #reg_anatmask_to_func2.inputs.apply_xfm = True
     # Create png images for quality check
 
     myqc = qc.vol2png("func2anat")

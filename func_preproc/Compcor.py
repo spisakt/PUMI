@@ -63,15 +63,18 @@ def compcor_workflow(SinkDir=".",
                         name='inputspec')
 
     # Calculate compcor files
-    compcor=pe.Node(cnf.ACompCor(pre_filter=False),
+    compcor=pe.MapNode(interface=cnf.ACompCor(pre_filter=False),
+                       iterfield=['realigned_file'],
                     name='compcor')
 
     # Custom interface wrapping function Float2Str
-    func_str2float = pe.Node(interface=utils_convert.Float2Str,
+    func_str2float = pe.MapNode(interface=utils_convert.Float2Str,
+                                iterfield=['float'],
                                name='func_str2float')
 
     # Custom interface wrapping function TR
-    TRvalue = pe.Node(interface=info_get.TR,
+    TRvalue = pe.MapNode(interface=info_get.TR,
+                         iterfield=['float'],
                       name='TRvalue')
 
     # Basic interface class generates identity mappings

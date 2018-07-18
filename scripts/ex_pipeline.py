@@ -76,17 +76,17 @@ totalWorkflow.connect([
 totalWorkflow.connect([
     (reorient_func, myfuncproc,
      [('out_file', 'inputspec.func')]),
-    (mybbr,myadding,
-     [('outputspec.csf_mask_in funcspace','inputspec.par1'),
-      ('outputspec.wm_mask_in funcspace','inputspec.par2')]),
-    (myadding,myfuncproc,
-     [('outputspec.added_imgs','inputspec.cc_noise_roi')]),
-#    (mybbr,myfuncproc,
+    #(mybbr,myadding,
+     #[('outputspec.csf_mask_in funcspace','inputspec.par1'),
+      #('outputspec.wm_mask_in funcspace','inputspec.par2')])
+ #   (myadding,myfuncproc,
+  #   [('outputspec.added_imgs','inputspec.cc_noise_roi')])
+ #   (mybbr,myfuncproc,
 #     [('outputspec.anatmask_infuncspace','inputspec.masksforcompcor')])
     ])
 
 
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
-#totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
+totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
 totalWorkflow.write_graph('graph.dot', graph2use='colored')
 totalWorkflow.run(plugin='MultiProc')
