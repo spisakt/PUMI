@@ -59,14 +59,9 @@ def bbr_workflow(SinkDir=".",
     inputspec = pe.Node(utility.IdentityInterface(fields=['func',
                                                        'skull',
                                                        'anat_wm_segmentation',
-                                                       'anat_csf_segmentation',
-                                                       'bbr_schedule']),
+                                                       'anat_csf_segmentation']),
                         name='inputspec')
-    # thisi s the default
-    #inputspec.inputs.bbr_schedule = fsldir + "/etc/flirtsch/bbr.sch"
-    #inputspec.inputs.func=func
-    #inputspec.inputs.skull=skull
-    #inputspec.inputs.anat_wm_segmentation=anat_wm_segmentation
+
 
     myonevol = onevol.onevol_workflow()
 
@@ -151,7 +146,6 @@ def bbr_workflow(SinkDir=".",
     analysisflow.base_dir = '.'
     analysisflow.connect(inputspec, 'func', linear_reg, 'in_file')
     analysisflow.connect(inputspec, 'skull',linear_reg, 'reference')
-    #analysisflow.connect(inputspec, 'bbr_schedule', bbreg_func_to_anat, 'schedule')
     analysisflow.connect(linear_reg, 'out_matrix_file', bbreg_func_to_anat, 'in_matrix_file')
     analysisflow.connect(inputspec, 'func', myonevol, 'inputspec.func')
     analysisflow.connect(myonevol, 'outputspec.func1vol', bbreg_func_to_anat, 'in_file')
