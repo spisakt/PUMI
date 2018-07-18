@@ -6,7 +6,6 @@ import PUMI.utils.Concat as conc
 import PUMI.func_preproc.Onevol as onevol
 import PUMI.func_preproc.MotionCorrecter as mc
 import PUMI.func_preproc.Compcor as cmpcor
-
 import PUMI.func_preproc.NuissanceCorr as nuisscorr
 import PUMI.func_preproc.TemporalFiltering as tmpfilt
 import PUMI.func_preproc.DataCensorer as cens
@@ -48,9 +47,9 @@ def FuncProc( SinkDir=".", SinkTag="func_preproc"):
     mycmpcor = cmpcor.compcor_workflow(SinkDir=SinkDir)
     myconc=conc.concat_workflow(numconcat=2,SinkDir=SinkDir)
     mynuisscor = nuisscorr.nuissremov_workflow(SinkDir=SinkDir)
-    #mytmpfilt = tmpfilt.tmpfilt_workflow(SinkDir=SinkDir)
-    #mycens = cens.datacens_workflow(SinkDir=SinkDir)
-    #mymedangcor = medangcor.mac_workflow(SinkDir=SinkDir)
+    mytmpfilt = tmpfilt.tmpfilt_workflow(SinkDir=SinkDir)
+    mycens = cens.datacens_workflow(SinkDir=SinkDir)
+    mymedangcor = medangcor.mac_workflow(SinkDir=SinkDir)
 
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['mc_func']),
@@ -69,10 +68,10 @@ def FuncProc( SinkDir=".", SinkTag="func_preproc"):
         (mymc, myconc, [('outputspec.first24_file', 'inputspec.par2')]),
         (myconc,mynuisscor, [('outputspec.concat_file', 'inputspec.design_file')]),
         (mymc, mynuisscor, [('outputspec.func_out_file', 'inputspec.in_file')]),
-                   #(mycmpcor, mytmpfilt, [('outputspec.out_file', 'inputspec.func')]),
-                   #(mytmpfilt, mycens, [('outputspec.func_tmplfilt', 'inputspec.func')]),
-                   #(mymc, mycens, [('outputspec.mat_file', 'inputspec.movement_parameters')]),
-                   #(mycens, mymedangcor, [('outputspec.scrubbed_image', 'inputspec.realigned_file')]),
+        (mynuisscor,mytmpfilt,[('outputspec.out_file','inputspec.func')]),
+        (mytmpfilt,mycens,[('outputspec.func_tmplfilt','inputspec.func')]),
+        (mymc,mycens,[('outputspec.mc_par_file','inputspec.movement_parameters')]),
+        (mycens, mymedangcor, [('outputspec.scrubbed_image', 'inputspec.realigned_file')]),
                    #(mymedangcor, myfunc2struc, [('outputspec.final_func', 'inputspec.in_file')])
                    ])
 

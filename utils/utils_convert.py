@@ -15,6 +15,16 @@ def float2string(float):
 
 def string2float(str):
     return float(str)
+
+def drop_firstline(txt):
+    import os
+    with open(txt, 'r') as fin:
+        data = fin.read().splitlines(True)
+    with open(os.path.split(txt)[-1], 'w') as fout:
+        fout.writelines(data[1:])
+        return os.getcwd() + '/' + os.path.split(txt)[-1]
+
+
 # Concatenate txt files column wise to the regress out nuissance variables from the data
 def concatenate(par1, par2='', par3='', par4='', par5='', par6='', par7='', par8='', par9='', par10=''):
     import os
@@ -68,3 +78,8 @@ Float2Str = Function(input_names=['float'],
 Str2Float = Function(input_names=['str'],
                        output_names=['float'],
                        function=string2float)
+
+DropFirstLine = Function(input_names=['txt'],
+                       output_names=['droppedtxtfloat'],
+                       function=drop_firstline)
+

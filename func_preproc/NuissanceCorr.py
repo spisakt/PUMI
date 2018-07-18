@@ -57,7 +57,7 @@ def nuissremov_workflow(SinkDir=".",
     analysisflow.base_dir = WorkingDirectory
     analysisflow.connect(inputspec, 'in_file', nuisregression, 'in_file')
     analysisflow.connect(inputspec, 'design_file', nuisregression, 'design_file')
-    analysisflow.connect(nuisregression, 'out_file', outputspec, 'func_out_file')
+    analysisflow.connect(nuisregression, 'out_file', outputspec, 'out_file')
     analysisflow.connect(nuisregression, 'out_file', ds, 'func_nuiss_corrected')
 
     return analysisflow
