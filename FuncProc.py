@@ -67,8 +67,6 @@ def FuncProc( SinkDir=".", SinkTag="func_preproc"):
         (inputspec, mycmpcor, [('cc_noise_roi', 'inputspec.mask_file')]),
         (mycmpcor,myconc, [('outputspec.components_file','inputspec.par1')]),
         (mymc, myconc, [('outputspec.first24_file', 'inputspec.par2')]),
-                   #(myconcat, mycmpcor, [('outputspec.out_file', 'inputspec.design_file')]),
-                   #(mymc, mycmpcor, [('outputspec.func_out_file', 'inputspec.in_file')]),
                    #(mycmpcor, mytmpfilt, [('outputspec.out_file', 'inputspec.func')]),
                    #(mytmpfilt, mycens, [('outputspec.func_tmplfilt', 'inputspec.func')]),
                    #(mymc, mycens, [('outputspec.mat_file', 'inputspec.movement_parameters')]),

@@ -46,14 +46,14 @@ def concat_workflow(numconcat=2,
     for i in range(1, numconcat + 1):
         inputs.append("par" + str(i))
 
-
     # Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=inputs),
                         name='inputspec')
     # Custom interface to concatenate separate noise design files
-    concatenate = pe.Node(interface=Function(input_names=inputs,
+    concatenate = pe.MapNode(interface=Function(input_names=inputs,
                                              output_names='concat_file',
                                              function=utils_convert.concatenate),
+                             iterfield=inputs,
                                 name='concatenate')
 
 
@@ -67,7 +67,8 @@ def concat_workflow(numconcat=2,
         actparam = "par" + str(i)
         analysisflow.connect(inputspec, actparam, concatenate, actparam)
 
-
+    #analysisflow.connect(inputspec, 'par1', concatenate, 'par1')
+    #analysisflow.connect(inputspec, 'par2', concatenate, 'par2')
     analysisflow.connect(concatenate, 'concat_file', outputspec, 'concat_file')
 
 
