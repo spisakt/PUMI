@@ -49,7 +49,6 @@ mybet = pe.MapNode(interface=fsl.BET(frac=0.3, mask=True),
                    iterfield=['in_file'],
                    name="func_bet")
 
-# todo: smooth!!!!
 myaroma = aroma.aroma_workflow()
 
 totalWorkflow = nipype.Workflow('exAROMA')
@@ -63,25 +62,25 @@ totalWorkflow.connect([
      [('out_file', 'inputspec.anat')]),
     (datagrab, reorient_func,
      [('func', 'in_file')]),
-    (reorient_func, mybbr,
-     [('out_file', 'inputspec.func')]),
-    (myanatproc, mybbr,
-      [('outputspec.skull', 'inputspec.skull')]),
-    (myanatproc, mybbr,
-      [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation')]),
-    (reorient_func, mymc,
-     [('out_file', 'inputspec.func')]),
-    (reorient_func, mybet,
-     [('out_file', 'in_file')]),
-    (mymc, myaroma,
-     [('outputspec.func_out_file', 'inputspec.mc_func'),
-      ('outputspec.mc_par_file', 'inputspec.mc_par')]),
-    (mybbr, myaroma,
-     [('outputspec.func_to_anat_linear_xfm', 'inputspec.mat_file')]),
-    (myanatproc, myaroma,
-     [('outputspec.anat2mni_warpfield', 'inputspec.fnirt_warp_file')]),
-    (mybet, myaroma,
-     [('mask_file', 'inputspec.mask')])
+#    (reorient_func, mybbr,
+#     [('out_file', 'inputspec.func')]),
+#    (myanatproc, mybbr,
+#      [('outputspec.skull', 'inputspec.skull')]),
+#    (myanatproc, mybbr,
+#      [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation')]),
+#    (reorient_func, mymc,
+#     [('out_file', 'inputspec.func')]),
+#    (reorient_func, mybet,
+#     [('out_file', 'in_file')])
+#    (mymc, myaroma,
+#     [('outputspec.func_out_file', 'inputspec.mc_func'),
+#      ('outputspec.mc_par_file', 'inputspec.mc_par')]),
+#    (mybbr, myaroma,
+#     [('outputspec.func_to_anat_linear_xfm', 'inputspec.mat_file')]),
+#    (myanatproc, myaroma,
+#     [('outputspec.anat2mni_warpfield', 'inputspec.fnirt_warp_file')]),
+#    (mybet, myaroma,
+#     [('mask_file', 'inputspec.mask')])
     ])
 
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True);
