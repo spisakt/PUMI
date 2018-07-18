@@ -1,10 +1,13 @@
-def aroma_workflow(SinkDir = ".",
+def aroma_workflow(fwhm=0,
+                SinkDir = ".",
                 SinkTag = "aroma",
                 WorkingDirectory="."):
 
     """
    ICA AROMA method embedded into PUMI
    https://github.com/rhr-pruim/ICA-AROMA
+
+    function input: fwhm: smoothing FWHM in mm. fwhm=0 means no smoothing
 
     Workflow inputs:
         :param mc_func: The reoriented and motion-corrected functional file.
@@ -29,6 +32,7 @@ def aroma_workflow(SinkDir = ".",
     import nipype.pipeline as pe
     from nipype.interfaces import utility
     import nipype.interfaces.io as io
+    from nipype.interfaces.fsl import Smooth
     import os
 
     QCDir = os.path.abspath(SinkDir + "QC")
@@ -49,6 +53,13 @@ def aroma_workflow(SinkDir = ".",
                             name='inputspec')
 
     # build the actual pipeline
+    #if fwhm != 0:
+    #    smoother = pe.MapNode(interface=Smooth(fwhm=fwhm),
+    #                          iterfield=['in_file'],
+    #                          name="smoother"
+    #                          )
+
+
     aroma = pe.MapNode(interface=ICA_AROMA(denoise_type='both'),
                        iterfield=['in_file',
                                   'motion_parameters',
@@ -76,10 +87,16 @@ def aroma_workflow(SinkDir = ".",
     # TODO inverted transformation matrix node is necessery
     outputspec = pe.Node(utility.IdentityInterface(fields=['aggr_denoised_file',
                                                            'nonaggr_denoised_file'
-                                                           'out_dir']),
+                                                           'out_dir',
+                                                           'fwhm']),
                          name='outputspec')
+    outputspec.inputs.fwhm = fwhm
 
     analysisflow = pe.Workflow(name='AROMA')
+    #if fwhm != 0:
+    #    analysisflow.connect(inputspec, 'mc_func', smoother, 'in_file')
+    #    analysisflow.connect(smoother, 'smoothed_file', aroma, 'in_file')
+    #else:
     analysisflow.connect(inputspec, 'mc_func', aroma, 'in_file')
     analysisflow.connect(inputspec, 'mc_par', aroma, 'motion_parameters')
     analysisflow.connect(inputspec, 'mat_file', aroma, 'mat_file')
