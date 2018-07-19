@@ -1,6 +1,18 @@
+def extract_motionICs(IcaDir):
+    import numpy as np
+    melmix = np.loadtxt(os.path.join(IcaDir, 'melodic.ica', 'melodic_mix'))
+    noiseidx = np.loadtxt(os.path.join(IcaDir, 'melodic.ica', 'classified_motion_ICs.txt'), delimiter=",")
+    noiseidx = [int(x) for x in noiseidx]
+    noiseidx = noiseidx-1  # since python starts with zero
+    motionICs = melmix[:, noiseidx]
+
+    np.savetxt('motionICs.txt', motionICs)
+    return os.path.join(os.getcwd(),'motionICs.txt')
+
+
 def aroma_workflow(fwhm=0,
                 SinkDir = ".",
-                SinkTag = "aroma",
+                SinkTag = "func_preproc",
                 WorkingDirectory="."):
 
     """
@@ -58,8 +70,7 @@ def aroma_workflow(fwhm=0,
     if fwhm != 0:
         smoother = pe.MapNode(interface=Smooth(fwhm=fwhm),
                               iterfield=['in_file'],
-                              name="smoother"
-                              )
+                              name="smoother")
     myqc_before = qc.timecourse2png("ts_aroma", tag="1_original", type=qc.TsPlotType.ROI)
     #myqc_before.inputs.inputspec.x = 48
     #myqc_before.inputs.inputspec.y = 48
@@ -76,8 +87,8 @@ def aroma_workflow(fwhm=0,
     aroma.inputs.denoise_type = 'both'
     aroma.inputs.out_dir = 'AROMA_out'
 
-    myqc_after_nonaggr = qc.timecourse2png("ts_aroma", tag="2_nonaggressive")
-    myqc_after_aggr = qc.timecourse2png("ts_aroma", tag="3_aggressive")  # put these in the same QC dir
+    myqc_after_nonaggr = qc.timecourse2png("ts_aroma", tag="2_nonaggressive", type=qc.TsPlotType.ROI)
+    myqc_after_aggr = qc.timecourse2png("ts_aroma", tag="3_aggressive", type=qc.TsPlotType.ROI)  # put these in the same QC dir
 
     # Save outputs which are important
     ds_nii = pe.Node(interface=io.DataSink(),
