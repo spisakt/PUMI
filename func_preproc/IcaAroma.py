@@ -32,6 +32,7 @@ def aroma_workflow(fwhm=0,
     import nipype.pipeline as pe
     from nipype.interfaces import utility
     import nipype.interfaces.io as io
+    import PUMI.utils.QC as qc
     from nipype.interfaces.fsl import Smooth
     import os
 
@@ -48,17 +49,21 @@ def aroma_workflow(fwhm=0,
                                                           'mc_par',
                                                           'fnirt_warp_file',
                                                           'mat_file',
-                                                          'mask'
+                                                          'mask',
+                                                          'qc_mask'
                                                           ]),
                             name='inputspec')
 
     # build the actual pipeline
-    #if fwhm != 0:
-    #    smoother = pe.MapNode(interface=Smooth(fwhm=fwhm),
-    #                          iterfield=['in_file'],
-    #                          name="smoother"
-    #                          )
-
+    if fwhm != 0:
+        smoother = pe.MapNode(interface=Smooth(fwhm=fwhm),
+                              iterfield=['in_file'],
+                              name="smoother"
+                              )
+    myqc_before = qc.timecourse2png("ts_aroma", tag="1_original", type=qc.TsPlotType.ROI)
+    #myqc_before.inputs.inputspec.x = 48
+    #myqc_before.inputs.inputspec.y = 48
+    #myqc_before.inputs.inputspec.z = 18
 
     aroma = pe.MapNode(interface=ICA_AROMA(denoise_type='both'),
                        iterfield=['in_file',
@@ -71,17 +76,14 @@ def aroma_workflow(fwhm=0,
     aroma.inputs.denoise_type = 'both'
     aroma.inputs.out_dir = 'AROMA_out'
 
+    myqc_after_nonaggr = qc.timecourse2png("ts_aroma", tag="2_nonaggressive")
+    myqc_after_aggr = qc.timecourse2png("ts_aroma", tag="3_aggressive")  # put these in the same QC dir
+
     # Save outputs which are important
     ds_nii = pe.Node(interface=io.DataSink(),
                  name='ds_nii')
     ds_nii.inputs.base_directory = SinkDir
     ds_nii.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
-
-    # Save outputs which are important
-    ds_qc = pe.Node(interface=io.DataSink(),
-                  name='ds_qc')
-    ds_qc.inputs.base_directory = QCDir
-    ds_qc.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".png")]
 
     # Define outputs of the workflow
     # TODO inverted transformation matrix node is necessery
@@ -93,16 +95,24 @@ def aroma_workflow(fwhm=0,
     outputspec.inputs.fwhm = fwhm
 
     analysisflow = pe.Workflow(name='AROMA')
-    #if fwhm != 0:
-    #    analysisflow.connect(inputspec, 'mc_func', smoother, 'in_file')
-    #    analysisflow.connect(smoother, 'smoothed_file', aroma, 'in_file')
-    #else:
-    analysisflow.connect(inputspec, 'mc_func', aroma, 'in_file')
+    if fwhm != 0:
+        analysisflow.connect(inputspec, 'mc_func', smoother, 'in_file')
+        analysisflow.connect(smoother, 'smoothed_file', aroma, 'in_file')
+        analysisflow.connect(smoother, 'smoothed_file', myqc_before, 'inputspec.func')
+    else:
+        analysisflow.connect(inputspec, 'mc_func', aroma, 'in_file')
+        analysisflow.connect(inputspec, 'mc_func', myqc_before, 'inputspec.func')
     analysisflow.connect(inputspec, 'mc_par', aroma, 'motion_parameters')
     analysisflow.connect(inputspec, 'mat_file', aroma, 'mat_file')
     analysisflow.connect(inputspec, 'fnirt_warp_file', aroma, 'fnirt_warp_file')
     analysisflow.connect(inputspec, 'mask', aroma, 'mask')
     analysisflow.connect(aroma, 'aggr_denoised_file', ds_nii, 'AROMA_aggr_denoised')
     analysisflow.connect(aroma, 'nonaggr_denoised_file', ds_nii, 'AROMA_nonaggr_denoised')
+
+    analysisflow.connect(inputspec, 'qc_mask', myqc_before, 'inputspec.mask')
+    analysisflow.connect(aroma, 'aggr_denoised_file', myqc_after_aggr, 'inputspec.func')
+    analysisflow.connect(inputspec, 'qc_mask', myqc_after_aggr, 'inputspec.mask')
+    analysisflow.connect(aroma, 'nonaggr_denoised_file', myqc_after_nonaggr, 'inputspec.func')
+    analysisflow.connect(inputspec, 'qc_mask', myqc_after_nonaggr, 'inputspec.mask')
 
     return analysisflow

@@ -39,7 +39,7 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
                       iterfield=['in_file'],
                       name="reorient_func")
 
-myanatproc = anatproc.AnatProc(stdreg=anatproc.RegType.FSL)
+myanatproc = anatproc.AnatProc(stdreg=anatproc.RegType.FSL)  # regtype MUST be FSL for ICA AROMA!!!
 
 mymc = mc.mc_workflow()
 
@@ -49,7 +49,11 @@ mybet = pe.MapNode(interface=fsl.BET(frac=0.3, mask=True),
                    iterfield=['in_file'],
                    name="func_bet")
 
-myaroma = aroma.aroma_workflow()
+mymasker = pe.MapNode(interface=fsl.ImageMaths(args='-thr 0.5 -bin'),
+                      iterfield=['in_file'],
+                      name="qcmasker")
+
+myaroma = aroma.aroma_workflow(fwhm=3)
 
 totalWorkflow = nipype.Workflow('exAROMA')
 totalWorkflow.base_dir = '.'
@@ -67,20 +71,23 @@ totalWorkflow.connect([
     (myanatproc, mybbr,
       [('outputspec.skull', 'inputspec.skull')]),
     (myanatproc, mybbr,
-      [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation')]),
-#    (reorient_func, mymc,
-#     [('out_file', 'inputspec.func')]),
-#    (reorient_func, mybet,
-#     [('out_file', 'in_file')])
-#    (mymc, myaroma,
-#     [('outputspec.func_out_file', 'inputspec.mc_func'),
-#      ('outputspec.mc_par_file', 'inputspec.mc_par')]),
-#    (mybbr, myaroma,
-#     [('outputspec.func_to_anat_linear_xfm', 'inputspec.mat_file')]),
-#    (myanatproc, myaroma,
-#     [('outputspec.anat2mni_warpfield', 'inputspec.fnirt_warp_file')]),
-#    (mybet, myaroma,
-#     [('mask_file', 'inputspec.mask')])
+      [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
+       ('outputspec.probmap_csf', 'inputspec.anat_csf_segmentation')]),
+    (reorient_func, mymc,
+     [('out_file', 'inputspec.func')]),
+    (reorient_func, mybet,
+     [('out_file', 'in_file')]),
+    (mymc, myaroma,
+     [('outputspec.func_out_file', 'inputspec.mc_func'),
+      ('outputspec.mc_par_file', 'inputspec.mc_par')]),
+    (mybbr, myaroma,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.mat_file')]),
+    (myanatproc, myaroma,
+     [('outputspec.anat2mni_warpfield', 'inputspec.fnirt_warp_file')]),
+    (myanatproc, mymasker,
+    [('outputspec.probmap_gm', 'inputspec.qc_mask')]),
+    (mybet, myaroma,
+     [('mask_file', 'inputspec.mask')])
     ])
 
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True);

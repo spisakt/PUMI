@@ -130,7 +130,6 @@ def bbr_workflow(SinkDir=".",
                                        name='anatmasks_to_func2')
     #reg_anatmask_to_func2.inputs.apply_xfm = True
     # Create png images for quality check
-
     myqc = qc.vol2png("func2anat")
 
     # Save outputs which are important

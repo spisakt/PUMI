@@ -48,7 +48,7 @@ def concatenate(par1, par2='', par3='', par4='', par5='', par6='', par7='', par8
     if par10:
         totpar10= np.loadtxt(par10)
         totpar = np.concatenate((totpar, totpar10), axis=1)
-    np.savetxt('parfiles',totpar)
+    np.savetxt('parfiles', totpar)
     return os.getcwd() + '/parfiles'
 
 ###############################################
