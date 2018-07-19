@@ -76,7 +76,9 @@ def tmpfilt_workflow(highpass_insec=100,
                                name='func_str2float')
 
     #Wraps command **fslmaths**
-    tmpfilt = pe.MapNode(interface = fsl.TemporalFilter(),
+    # TODO: change highpass filter to AFNI implewmentation:
+    # https://neurostars.org/t/bandpass-filtering-different-outputs-from-fsl-and-nipype-custom-function/824
+    tmpfilt = pe.MapNode(interface=fsl.TemporalFilter(),
                          iterfield=['in_file','highpass_sigma','lowpass_sigma'],
                                name = 'tmpfilt')
 

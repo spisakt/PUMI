@@ -1,9 +1,12 @@
-def extract_motionICs(IcaDir):
+from nipype.interfaces.utility import Function
+
+def extract_motionICs(aroma_dir):
     import numpy as np
-    melmix = np.loadtxt(os.path.join(IcaDir, 'melodic.ica', 'melodic_mix'))
-    noiseidx = np.loadtxt(os.path.join(IcaDir, 'melodic.ica', 'classified_motion_ICs.txt'), delimiter=",")
+    import os
+    melmix = np.loadtxt(os.path.join(aroma_dir, 'melodic.ica', 'melodic_mix'))
+    noiseidx = np.loadtxt(os.path.join(aroma_dir, 'classified_motion_ICs.txt'), delimiter=",")
+    noiseidx = noiseidx - 1  # since python starts with zero
     noiseidx = [int(x) for x in noiseidx]
-    noiseidx = noiseidx-1  # since python starts with zero
     motionICs = melmix[:, noiseidx]
 
     np.savetxt('motionICs.txt', motionICs)
@@ -90,16 +93,28 @@ def aroma_workflow(fwhm=0,
     myqc_after_nonaggr = qc.timecourse2png("ts_aroma", tag="2_nonaggressive", type=qc.TsPlotType.ROI)
     myqc_after_aggr = qc.timecourse2png("ts_aroma", tag="3_aggressive", type=qc.TsPlotType.ROI)  # put these in the same QC dir
 
+    getMotICs=pe.MapNode(interface=Function(input_names=['aroma_dir'],
+                                            output_names=['motion_ICs'],
+                                            function=extract_motionICs),
+                         iterfield=['aroma_dir'],
+                         name="get_motion_ICs")
+
     # Save outputs which are important
     ds_nii = pe.Node(interface=io.DataSink(),
                  name='ds_nii')
     ds_nii.inputs.base_directory = SinkDir
     ds_nii.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
 
+    ds_txt = pe.Node(interface=io.DataSink(),
+                     name='ds_txt')
+    ds_txt.inputs.base_directory = SinkDir
+    ds_txt.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".txt")]
+
     # Define outputs of the workflow
     # TODO inverted transformation matrix node is necessery
     outputspec = pe.Node(utility.IdentityInterface(fields=['aggr_denoised_file',
-                                                           'nonaggr_denoised_file'
+                                                           'nonaggr_denoised_file',
+                                                           'motion_ICs',
                                                            'out_dir',
                                                            'fwhm']),
                          name='outputspec')
@@ -117,6 +132,8 @@ def aroma_workflow(fwhm=0,
     analysisflow.connect(inputspec, 'mat_file', aroma, 'mat_file')
     analysisflow.connect(inputspec, 'fnirt_warp_file', aroma, 'fnirt_warp_file')
     analysisflow.connect(inputspec, 'mask', aroma, 'mask')
+    analysisflow.connect(aroma, 'out_dir', getMotICs, 'aroma_dir')
+    analysisflow.connect(getMotICs, 'motion_ICs', ds_txt, 'motion_ICs')
     analysisflow.connect(aroma, 'aggr_denoised_file', ds_nii, 'AROMA_aggr_denoised')
     analysisflow.connect(aroma, 'nonaggr_denoised_file', ds_nii, 'AROMA_nonaggr_denoised')
 
@@ -125,5 +142,10 @@ def aroma_workflow(fwhm=0,
     analysisflow.connect(inputspec, 'qc_mask', myqc_after_aggr, 'inputspec.mask')
     analysisflow.connect(aroma, 'nonaggr_denoised_file', myqc_after_nonaggr, 'inputspec.func')
     analysisflow.connect(inputspec, 'qc_mask', myqc_after_nonaggr, 'inputspec.mask')
+
+    analysisflow.connect(aroma, 'aggr_denoised_file', outputspec, 'aggr_denoised_file')
+    analysisflow.connect(aroma, 'nonaggr_denoised_file', outputspec, 'nonaggr_denoised_file')
+    analysisflow.connect(aroma, 'out_dir', outputspec, 'out_dir')
+    analysisflow.connect(getMotICs, 'motion_ICs', outputspec, 'motion_ICs')
 
     return analysisflow

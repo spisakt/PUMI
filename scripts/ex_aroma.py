@@ -12,6 +12,8 @@ import PUMI.func_preproc.IcaAroma as aroma
 import PUMI.anat_preproc.Func2Anat as bbr
 from nipype.interfaces import fsl
 import PUMI.func_preproc.MotionCorrecter as mc
+from nipype.interfaces import afni
+import PUMI.func_preproc.info.info_get as info_get
 import os
 # parse command line arguments
 if (len(sys.argv) <= 2):
@@ -49,11 +51,24 @@ mybet = pe.MapNode(interface=fsl.BET(frac=0.3, mask=True),
                    iterfield=['in_file'],
                    name="func_bet")
 
-mymasker = pe.MapNode(interface=fsl.ImageMaths(args='-thr 0.5 -bin'),
-                      iterfield=['in_file'],
-                      name="qcmasker")
 
-myaroma = aroma.aroma_workflow(fwhm=3)
+# Get TR value from header
+#TRvalue = pe.MapNode(interface=info_get.TR,
+#                     iterfield=['in_file'],
+#                     name='TRvalue')
+
+# highpass-filter - no, we dont need it
+#tempfilt = pe.MapNode(interface=afni.Bandpass(highpass=0.008,  # TODO: parametrize hpf threshold
+#                            outputtype='NIFTI_GZ', despike=False, no_detrend=True, notrans=True),
+#                      iterfield=['in_file', 'tr'],
+#                      name="highpass_filter")
+
+scale_glob_4d = pe.MapNode(interface=fsl.ImageMaths(op_string="-ing 1000"),
+                           iterfield=['in_file'],
+                           name='scale')
+
+#todo: parametrize fwhm
+myaroma = aroma.aroma_workflow(fwhm=6)
 
 totalWorkflow = nipype.Workflow('exAROMA')
 totalWorkflow.base_dir = '.'
@@ -72,25 +87,28 @@ totalWorkflow.connect([
       [('outputspec.skull', 'inputspec.skull')]),
     (myanatproc, mybbr,
       [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
-       ('outputspec.probmap_csf', 'inputspec.anat_csf_segmentation')]),
+       ('outputspec.probmap_csf', 'inputspec.anat_csf_segmentation'),
+       ('outputspec.probmap_gm', 'inputspec.anat_gm_segmentation')]),
     (reorient_func, mymc,
      [('out_file', 'inputspec.func')]),
     (reorient_func, mybet,
      [('out_file', 'in_file')]),
+    (mymc, scale_glob_4d,
+     [('outputspec.func_out_file', 'in_file')]),
+    (scale_glob_4d, myaroma,
+     [('out_file', 'inputspec.mc_func')]),
     (mymc, myaroma,
-     [('outputspec.func_out_file', 'inputspec.mc_func'),
-      ('outputspec.mc_par_file', 'inputspec.mc_par')]),
+     [('outputspec.mc_par_file', 'inputspec.mc_par')]),
     (mybbr, myaroma,
-     [('outputspec.func_to_anat_linear_xfm', 'inputspec.mat_file')]),
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.mat_file'),
+      ('outputspec.gm_mask_in_funcspace', 'inputspec.qc_mask')]),
     (myanatproc, myaroma,
-     [('outputspec.anat2mni_warpfield', 'inputspec.fnirt_warp_file')]),
-    (myanatproc, mymasker,
-    [('outputspec.probmap_gm', 'inputspec.qc_mask')]),
+    [('outputspec.anat2mni_warpfield', 'inputspec.fnirt_warp_file')]),
     (mybet, myaroma,
      [('mask_file', 'inputspec.mask')])
     ])
 
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True);
 totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False);
-totalWorkflow.write_graph('graph.dot', graph2use='colored');
+totalWorkflow.write_graph('graph.dot', graph2use='colored')
 totalWorkflow.run(plugin='MultiProc')

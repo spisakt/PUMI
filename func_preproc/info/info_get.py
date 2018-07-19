@@ -20,7 +20,7 @@ def get_scan_info(in_file):
     func = nib.load(in_file)
     header = func.header
     TR = header['pixdim'][4]
-    return TR
+    return float(TR)
 
 def get_idx(in_files, stop_idx=None, start_idx=None):
     """

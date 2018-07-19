@@ -45,7 +45,7 @@ mybbr = bbr.bbr_workflow()
 # Add arbitrary number of nii images wthin the same space. The default is to add csf and wm masks for anatcompcor calculation.
 #myadding=adding.addimgs_workflow(numimgs=2)
 add_masks = pe.MapNode(fsl.ImageMaths(op_string=' -add'),
-                       iterfield=['in_file','in_file2'],
+                       iterfield=['in_file', 'in_file2'],
                        name="addimgs")
 
 def pickindex(vec, i):
@@ -69,7 +69,8 @@ totalWorkflow.connect([
     (myanatproc, mybbr,
       [('outputspec.skull', 'inputspec.skull'),
        ('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
-       ('outputspec.probmap_csf', 'inputspec.anat_csf_segmentation')]),
+       ('outputspec.probmap_csf', 'inputspec.anat_csf_segmentation'),
+       ('outputspec.probmap_gm', 'inputspec.anat_gm_segmentation')]),
 
     ])
 
@@ -78,8 +79,8 @@ totalWorkflow.connect([
     (reorient_func, myfuncproc,
      [('out_file', 'inputspec.func')]),
     (mybbr,add_masks,
-     [('outputspec.csf_mask_in funcspace','in_file'),
-      ('outputspec.wm_mask_in funcspace','in_file2')]),
+     [('outputspec.csf_mask_in_funcspace','in_file'),
+      ('outputspec.wm_mask_in_funcspace','in_file2')]),
     (add_masks,myfuncproc,
      [('out_file','inputspec.cc_noise_roi')])
     ])
