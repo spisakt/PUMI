@@ -16,8 +16,8 @@ def sub_two(a,b):
 def abs_val(x):
     return abs(x)
 
-def sec2sigmaV(TR, highpasssec):
-    sigmaV=highpasssec/(2*TR)
+def sec2sigmaV(TR, sec):
+    sigmaV=sec/(2*TR)
     return sigmaV
 
 
@@ -39,6 +39,6 @@ Abs = Function(input_names=['x'],
                        output_names=['abs'],
                        function=abs_val)
 
-Sec2sigmaV = Function(input_names=['TR', 'highpasssec'],
+Sec2sigmaV = Function(input_names=['TR', 'sec'],
                        output_names=['sigmaV'],
                        function=sec2sigmaV)

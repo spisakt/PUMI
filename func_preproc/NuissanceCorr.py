@@ -40,7 +40,8 @@ def nuissremov_workflow(SinkDir=".",
                         name='inputspec')
 
     # Perform the nuissance regression
-    nuisregression=pe.Node(fsl.FilterRegressor(filter_all=True),
+    nuisregression=pe.MapNode(interface=fsl.FilterRegressor(filter_all=True),
+                              iterfield=['design_file','in_file'],
                            name='nuisregression')
 
     # Basic interface class generates identity mappings
@@ -52,11 +53,11 @@ def nuissremov_workflow(SinkDir=".",
     ds.inputs.base_directory = SinkDir
 
     # Generate workflow
-    analysisflow = nipype.Workflow('mcWorkflow')
+    analysisflow = nipype.Workflow('nuissWorkflow')
     analysisflow.base_dir = WorkingDirectory
     analysisflow.connect(inputspec, 'in_file', nuisregression, 'in_file')
     analysisflow.connect(inputspec, 'design_file', nuisregression, 'design_file')
-    analysisflow.connect(nuisregression, 'out_file', outputspec, 'func_out_file')
+    analysisflow.connect(nuisregression, 'out_file', outputspec, 'out_file')
     analysisflow.connect(nuisregression, 'out_file', ds, 'func_nuiss_corrected')
 
     return analysisflow

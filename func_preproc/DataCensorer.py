@@ -1,5 +1,4 @@
-def datacens_workflow(
-        SinkDir=".",
+def datacens_workflow(SinkDir=".",
         SinkTag="func_preproc",
         WorkingDirectory="."):
 
@@ -15,7 +14,7 @@ def datacens_workflow(
 
     Description:
         Do the data censoring on the 4D functional data. First, it calculates the framewise displacement according to Power's method. Second, it
-        indexes the volumes which FS is in the upper part (determined by the threshold variable). Thirdly, it excludes those volumes and one volume
+        indexes the volumes which FS is in the upper part in percent(determined by the threshold variable which is 5% by default). Thirdly, it excludes those volumes and one volume
         before and 2 volumes after the indexed volume. The workflow returns a 4D scrubbed functional data.
 
     Workflow inputs:
@@ -68,34 +67,37 @@ def datacens_workflow(
     # Identitiy mapping for input variables
     inputspec = pe.Node(utility.IdentityInterface(fields=['func',
                                                           'movement_parameters',
-                                                          'threshold',
-                                                          'remove_frames_before',
-                                                          'remove_frames_after']),
+                                                          'threshold']),
                         name='inputspec')
+    inputspec.inputs.threshold=5
     # Calculate FD based on Power's method
-    calculate_FD = pe.Node(utility.Function(input_names=['in_file'],
+    calculate_FD = pe.MapNode(utility.Function(input_names=['in_file'],
                                          output_names=['out_file'],
                                          function=calculate_FD_P),
+                              iterfield=['in_file'],
                            name='calculate_FD')
 
     #TODO check CPAC.generate_motion_statistics.generate_motion_statistics script. It may use the FD of Jenkinson to index volumes which violate the upper threhold limit, no matter what we set.
     # Determine the indices of the upper part (which is defined by the threshold, deafult 5%) of values based on their FD values
-    calc_upprperc = pe.Node(utility.Function(input_names=['in_file',
+    calc_upprperc = pe.MapNode(utility.Function(input_names=['in_file',
                                                         'threshold'],
                                            output_names=['frames_in_idx',
                                                          'percentFD'],
                                            function=calculate_upperpercent),
+                               iterfield=['in_file'],
                              name='calculate_upperpercent')
 
     # Generate the weird input for the scrubbing procedure which is done in afni
-    craft_scrub_input = pe.Node(utility.Function(input_names=['scrub_input', 'frames_in_1D_file'],
+    craft_scrub_input = pe.MapNode(utility.Function(input_names=['scrub_input', 'frames_in_1D_file'],
                                               output_names=['scrub_input_string'],
                                               function=get_indx),
+                                   iterfield=['scrub_input', 'frames_in_1D_file'],
                                 name='scrubbing_craft_input_string')
     # Scrub the image
-    scrubbed_preprocessed = pe.Node(utility.Function(input_names=['scrub_input'],
+    scrubbed_preprocessed = pe.MapNode(utility.Function(input_names=['scrub_input'],
                                                   output_names=['scrubbed_image'],
                                                   function=scrub_image),
+                                       iterfield=['scrub_input'],
                                     name='scrubbed_preprocessed')
 
 
@@ -174,7 +176,7 @@ def calculate_FD_P(in_file):
 
     return out_file
 
-def calculate_upperpercent(in_file,threshold=5):
+def calculate_upperpercent(in_file,threshold):
     import os
     import numpy as np
     from numpy import loadtxt

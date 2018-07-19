@@ -63,18 +63,22 @@ def compcor_workflow(SinkDir=".",
                         name='inputspec')
 
     # Calculate compcor files
-    compcor=pe.MapNode(interface=cnf.ACompCor(pre_filter=False),
-                       iterfield=['realigned_file'],
+    compcor=pe.MapNode(interface=cnf.ACompCor(pre_filter=False,header_prefix=""),
+                       iterfield=['realigned_file','repetition_time','mask_files'],
                     name='compcor')
 
     # Custom interface wrapping function Float2Str
-    func_str2float = pe.MapNode(interface=utils_convert.Float2Str,
-                                iterfield=['float'],
+    func_str2float = pe.MapNode(interface=utils_convert.Str2Float,
+                                iterfield=['str'],
                                name='func_str2float')
-
+    # Drop first line of the Acompcor function output
+    drop_firstline=pe.MapNode(interface=utils_convert.DropFirstLine,
+               iterfield=['txt'],
+               name='drop_firstline'
+                )
     # Custom interface wrapping function TR
     TRvalue = pe.MapNode(interface=info_get.TR,
-                         iterfield=['float'],
+                         iterfield=['in_file'],
                       name='TRvalue')
 
     # Basic interface class generates identity mappings
@@ -91,10 +95,12 @@ def compcor_workflow(SinkDir=".",
     analysisflow.base_dir = WorkingDirectory
     analysisflow.connect(inputspec, 'func_aligned', compcor, 'realigned_file')
     analysisflow.connect(inputspec, 'func_aligned', TRvalue, 'in_file')
-    analysisflow.connect(TRvalue, 'TR', func_str2float, 'float')
+    analysisflow.connect(TRvalue, 'TR', func_str2float, 'str')
     analysisflow.connect(func_str2float, 'float', compcor, 'repetition_time')
+    #analysisflow.connect(TRvalue, 'TR', compcor, 'repetition_time')
     analysisflow.connect(inputspec, 'mask_file', compcor, 'mask_files')
-    analysisflow.connect(compcor, 'components_file', outputspec, 'components_file')
+    analysisflow.connect(compcor, 'components_file',drop_firstline,'txt')
+    analysisflow.connect(drop_firstline, 'droppedtxtfloat', outputspec, 'components_file')
     analysisflow.connect(compcor, 'components_file', ds_text, 'compcor_noise')
 
     return analysisflow

@@ -1,8 +1,9 @@
 def tmpfilt_workflow(highpass_insec=100,
-                     lowpass_insec=10,
+                     lowpass_insec=1,
                      SinkDir=".",
                      SinkTag="func_preproc",
                      WorkingDirectory="."):
+    #TODO kivezetni a higpass_inseces lowpass_insec valtozokat egy(esetleg kettto)-vel feljebbi szintekre.
     """
     Modified version of porcupine generated temporal filtering code:
 
@@ -13,6 +14,8 @@ def tmpfilt_workflow(highpass_insec=100,
 
     Workflow inputs:
         :param func: The reoriented functional file.
+        :param highpass: The highpass filter, which is 100s by default.
+        :param lowpass: The lowpass filter, which is 1s by default.
         :param SinkDir:
         :param SinkTag: The output directory in which the returned images (see workflow outputs) could be found in a subdirectory directory specific for this workflow.
 
@@ -33,7 +36,6 @@ def tmpfilt_workflow(highpass_insec=100,
 
     """
 
-    # Todo
     #This is a Nipype generator. Warning, here be dragons.
     #!/usr/bin/env python
     import sys
@@ -54,29 +56,33 @@ def tmpfilt_workflow(highpass_insec=100,
     #Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=['func',
                                                           'highpass_insec',
-                                                          'lowpass_insec',
-                                                          'TR']),
+                                                          'lowpass_insec']),
                                name = 'inputspec')
     inputspec.inputs.highpass_insec = highpass_insec
     inputspec.inputs.lowpass_insec = lowpass_insec
 
     #Custom interface wrapping function Sec2sigmaV
-    func_sec2sigmaV = pe.Node(interface = utils_math.Sec2sigmaV,
+    func_sec2sigmaV = pe.MapNode(interface = utils_math.Sec2sigmaV,
+                                 iterfield=['TR'],
                                name = 'func_sec2sigmaV')
     #Custom interface wrapping function Sec2sigmaV_2
-    func_sec2sigmaV_2 = pe.Node(interface = utils_math.Sec2sigmaV,
+    func_sec2sigmaV_2 = pe.MapNode(interface = utils_math.Sec2sigmaV,
+                                   iterfield=['TR'],
                                name = 'func_sec2sigmaV_2')
 
-    # Custom interface wrapping function Float2Str
-    func_str2float_2 = pe.Node(interface=utils_convert.Float2Str,
-                               name='func_str2float_2')
+    # Custom interface wrapping function Str2Func
+    func_str2float = pe.MapNode(interface=utils_convert.Str2Float,
+                                iterfield=['str'],
+                               name='func_str2float')
 
     #Wraps command **fslmaths**
-    tmpfilt = pe.Node(interface = fsl.TemporalFilter(),
+    tmpfilt = pe.MapNode(interface = fsl.TemporalFilter(),
+                         iterfield=['in_file','highpass_sigma','lowpass_sigma'],
                                name = 'tmpfilt')
 
     # Get TR value from header
-    TRvalue = pe.Node(interface=info_get.TR,
+    TRvalue = pe.MapNode(interface=info_get.TR,
+                         iterfield=['in_file'],
                       name='TRvalue')
     #Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['func_tmplfilt']),
@@ -95,15 +101,15 @@ def tmpfilt_workflow(highpass_insec=100,
     analysisflow.base_dir = WorkingDirectory
     analysisflow.connect(inputspec, 'func', tmpfilt, 'in_file')
     analysisflow.connect(inputspec, 'func', TRvalue, 'in_file')
-    analysisflow.connect(TRvalue, 'TR', func_str2float_2, 'float')
-    analysisflow.connect(func_str2float_2, 'float', func_sec2sigmaV, 'TR')
-    analysisflow.connect(inputspec, 'highpass_insec', func_sec2sigmaV, 'highpasssec')
-    analysisflow.connect(func_str2float_2, 'float', func_sec2sigmaV_2, 'TR')
-    analysisflow.connect(inputspec, 'lowpass_insec', func_sec2sigmaV_2, 'lowpasssec')
+    analysisflow.connect(TRvalue, 'TR', func_str2float, 'str')
+    analysisflow.connect(func_str2float, 'float', func_sec2sigmaV, 'TR')
+    analysisflow.connect(inputspec, 'highpass_insec', func_sec2sigmaV, 'sec')
+    analysisflow.connect(func_str2float, 'float', func_sec2sigmaV_2, 'TR')
+    analysisflow.connect(inputspec, 'lowpass_insec', func_sec2sigmaV_2, 'sec')
     analysisflow.connect(func_sec2sigmaV, 'sigmaV', tmpfilt, 'highpass_sigma')
     analysisflow.connect(func_sec2sigmaV_2, 'sigmaV', tmpfilt, 'lowpass_sigma')
     analysisflow.connect(tmpfilt, 'out_file', ds, 'tmpfilt')
-    analysisflow.connect(tmpfilt, 'out_file', outputspec, 'tmpfilt')
+    analysisflow.connect(tmpfilt, 'out_file', outputspec, 'func_tmplfilt')
 
 
 
