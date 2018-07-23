@@ -13,7 +13,7 @@ def extract_motionICs(aroma_dir):
     return os.path.join(os.getcwd(),'motionICs.txt')
 
 
-def aroma_workflow(fwhm=0,
+def aroma_workflow(fwhm=0, # in mm
                 SinkDir = ".",
                 SinkTag = "func_preproc",
                 WorkingDirectory="."):

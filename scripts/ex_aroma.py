@@ -9,9 +9,13 @@ import nipype.interfaces.io as nio
 import nipype.interfaces.fsl as fsl
 import PUMI.AnatProc as anatproc
 import PUMI.func_preproc.IcaAroma as aroma
+import PUMI.func_preproc.func2standard as func2standard
 import PUMI.anat_preproc.Func2Anat as bbr
 from nipype.interfaces import fsl
 import PUMI.func_preproc.MotionCorrecter as mc
+from nipype.interfaces.utility import Function
+import PUMI.plot.image as plot
+
 from nipype.interfaces import afni
 import PUMI.func_preproc.info.info_get as info_get
 import os
@@ -51,6 +55,7 @@ mybet = pe.MapNode(interface=fsl.BET(frac=0.3, mask=True),
                    iterfield=['in_file'],
                    name="func_bet")
 
+func2std = func2standard.func2mni()
 
 # Get TR value from header
 #TRvalue = pe.MapNode(interface=info_get.TR,
@@ -68,7 +73,14 @@ scale_glob_4d = pe.MapNode(interface=fsl.ImageMaths(op_string="-ing 1000"),
                            name='scale')
 
 #todo: parametrize fwhm
-myaroma = aroma.aroma_workflow(fwhm=6)
+myaroma = aroma.aroma_workflow(fwhm=8)
+
+
+#plotfmri = pe.MapNode(interface=Function(input_names=['img', 'atlaslabels', 'output_file'],
+#                       output_names=['plotfile'],
+#                       function=plot.plot_carpet))
+#plotfmri.inputs.atlaslabels = os.environ['FSLDIR'] + '/data/atlases/HarvardOxford/HarvardOxford-cort-maxprob-thr25-1mm.nii.gz'
+
 
 totalWorkflow = nipype.Workflow('exAROMA')
 totalWorkflow.base_dir = '.'
@@ -91,8 +103,9 @@ totalWorkflow.connect([
        ('outputspec.probmap_gm', 'inputspec.anat_gm_segmentation')]),
     (reorient_func, mymc,
      [('out_file', 'inputspec.func')]),
-    (reorient_func, mybet,
-     [('out_file', 'in_file')]),
+    (mymc, mybet,
+     [('outputspec.func_out_file', 'in_file')]),
+    #aroma
     (mymc, scale_glob_4d,
      [('outputspec.func_out_file', 'in_file')]),
     (scale_glob_4d, myaroma,
@@ -106,6 +119,14 @@ totalWorkflow.connect([
     [('outputspec.anat2mni_warpfield', 'inputspec.fnirt_warp_file')]),
     (mybet, myaroma,
      [('mask_file', 'inputspec.mask')])
+    #func2std
+    (mymc, func2std,
+     [('outputspec.func_out_file', 'inputspec.func')]),
+    (mybbr, func2std,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
+    (myanatproc, func2std,
+     [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx')])
+    # carpet plot!!!
     ])
 
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True);
