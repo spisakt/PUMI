@@ -9,7 +9,7 @@ class RegType:
     FSL = 1
     ANTS = 2
 
-def AnatProc(stdreg=RegType.FSL, SinkDir=".", SinkTag="anat_preproc"):
+def AnatProc(stdreg=RegType.FSL, SinkTag="anat_preproc", wf_name="anatproc"):
     """
         Performs processing of anatomical images:
         - brain extraction
@@ -48,19 +48,25 @@ def AnatProc(stdreg=RegType.FSL, SinkDir=".", SinkTag="anat_preproc"):
         2018
 
         """
+    import PUMI.utils.globals as globals
+    import os
+
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
+    if not os.path.exists(SinkDir):
+        os.makedirs(SinkDir)
 
     # Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=['anat']),
                         name='inputspec')
 
     # build the actual pipeline
-    mybet = bet.bet_workflow(SinkDir=SinkDir)
-    myfast = fast.fast_workflow(SinkDir=SinkDir)
+    mybet = bet.bet_workflow()
+    myfast = fast.fast_workflow()
 
     if (stdreg==RegType.FSL):
-        myanat2mni = anat2mni.anat2mni_fsl_workflow(SinkDir=SinkDir)
+        myanat2mni = anat2mni.anat2mni_fsl_workflow()
     else:  # ANTS
-        myanat2mni = anat2mni.anat2mni_ants_workflow(SinkDir=SinkDir)
+        myanat2mni = anat2mni.anat2mni_ants_workflow()
 
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['brain',
@@ -83,17 +89,16 @@ def AnatProc(stdreg=RegType.FSL, SinkDir=".", SinkTag="anat_preproc"):
     def pickindex(vec, i):
         return [x[i] for x in vec]
 
-    totalWorkflow = nipype.Workflow('AnatProc')
-    totalWorkflow.base_dir = '.'
+    totalWorkflow = nipype.Workflow(wf_name)
     totalWorkflow.connect([
         (inputspec, mybet,
          [('anat', 'inputspec.anat')]),
         (mybet, myfast,
          [('outputspec.brain', 'inputspec.brain')]),
         (mybet, myanat2mni,
-         [('outputspec.brain', 'inputspec.brain'),
-          ('outputspec.skull', 'inputspec.skull')]),
-
+         [('outputspec.brain', 'inputspec.brain')]),
+        (inputspec, myanat2mni,
+         [('anat', 'inputspec.skull')]),
         (mybet, outputspec,
          [('outputspec.skull', 'skull'),
           ('outputspec.brain', 'brain'),

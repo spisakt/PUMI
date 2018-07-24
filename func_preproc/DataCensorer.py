@@ -1,6 +1,4 @@
-def datacens_workflow(SinkDir=".",
-        SinkTag="func_preproc",
-        WorkingDirectory="."):
+def datacens_workflow(SinkTag="func_preproc", wf_name="data_censoring"):
 
     """
 
@@ -58,9 +56,10 @@ def datacens_workflow(SinkDir=".",
     import nipype.pipeline as pe
     import nipype.interfaces.utility as utility
     import nipype.interfaces.io as io
+    import PUMI.utils.globals as globals
+    import PUMI.utils.QC as qc
 
-
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
 
@@ -69,7 +68,7 @@ def datacens_workflow(SinkDir=".",
                                                           'movement_parameters',
                                                           'threshold']),
                         name='inputspec')
-    inputspec.inputs.threshold=5
+    inputspec.inputs.threshold = 5
     # Calculate FD based on Power's method
     calculate_FD = pe.MapNode(utility.Function(input_names=['in_file'],
                                          output_names=['out_file'],
@@ -100,6 +99,7 @@ def datacens_workflow(SinkDir=".",
                                        iterfield=['scrub_input'],
                                     name='scrubbed_preprocessed')
 
+    myqc = qc.timecourse2png("timeseries", tag="040_censored")
 
     outputspec = pe.Node(utility.IdentityInterface(fields=['scrubbed_image']),
                          name='outputspec')
@@ -109,9 +109,10 @@ def datacens_workflow(SinkDir=".",
     ds.inputs.base_directory=SinkDir
 
 
+    #TODO: some plot for qualitiy checking
+
     # Create workflow
-    analysisflow = pe.Workflow('censoringWorkflow')
-    analysisflow.base_dir = WorkingDirectory
+    analysisflow = pe.Workflow(wf_name)
     ###Calculating mean Framewise Displacement (FD) as Power et al., 2012
     analysisflow.connect(inputspec, 'movement_parameters', calculate_FD, 'in_file')
     analysisflow.connect(calculate_FD, 'out_file', outputspec, 'FD_1D')
@@ -128,6 +129,7 @@ def datacens_workflow(SinkDir=".",
     # Save a few files
     #analysisflow.connect(scrubbed_preprocessed, 'scrubbed_image', ds, 'scrubbed_image')
     #analysisflow.connect(calc_upprperc, 'percentFD', ds, 'scrubbed_image.@numberofvols')
+    analysisflow.connect(scrubbed_preprocessed, 'scrubbed_image', myqc, 'inputspec.func')
 
 
     return analysisflow

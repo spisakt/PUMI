@@ -1,7 +1,4 @@
-def func2mni(wf_name='applywarpWorkflow', #TODO parametrize workflow name for all workflows
-            SinkDir=".",
-             SinkTag="func_preproc"
-           ):
+def func2mni(wf_name='func2mni', SinkTag="func_preproc"):
 
     """
     Modified version of CPAC.registration.registration:
@@ -43,13 +40,10 @@ def func2mni(wf_name='applywarpWorkflow', #TODO parametrize workflow name for al
     import nipype.pipeline as pe
     import nipype.interfaces.utility as utility
     import nipype.interfaces.fsl as fsl
-    import nipype.interfaces.io as io
-    import copy, pprint
-    from nipype.interfaces.ants import Registration
+    import PUMI.utils.globals as globals
+    import PUMI.utils.QC as qc
 
-    fsldir = os.environ['FSLDIR']
-
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
 
@@ -58,12 +52,15 @@ def func2mni(wf_name='applywarpWorkflow', #TODO parametrize workflow name for al
                                                         'nonlinear_reg_mtrx',
                                                         'reference_brain']),
                                                 name='inputspec')
-    inputspec.inputs.reference_brain = fsldir + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
+    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
 
     # apply transformation marticis
     applywarp = pe.MapNode(interface=fsl.ApplyWarp(),
                          iterfield=['in_file', 'ref_file','field_file','premat'],
                          name='applywarp')
+
+    myqc = qc.vol2png("func2mni", "FSL")
+
     outputspec = pe.Node(utility.IdentityInterface(fields=['func_std']),
                          name='outputspec')
 
@@ -74,5 +71,8 @@ def func2mni(wf_name='applywarpWorkflow', #TODO parametrize workflow name for al
     analysisflow.connect(inputspec, 'nonlinear_reg_mtrx', applywarp, 'field_file')
     analysisflow.connect(inputspec, 'reference_brain', applywarp, 'ref_file')
     analysisflow.connect(applywarp, 'out_file', outputspec, 'func_std')
+
+    analysisflow.connect(applywarp, 'out_file', myqc, 'inputspec.bg_image')
+    analysisflow.connect(inputspec, 'reference_brain', myqc, 'inputspec.overlay_image')
 
     return analysisflow

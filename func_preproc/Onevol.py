@@ -1,6 +1,4 @@
-def onevol_workflow(
-           SinkDir=".",
-           SinkTag="anat_preproc"):
+def onevol_workflow(SinkTag="anat_preproc", wf_name="get_example_vol"):
 
 
     '''
@@ -22,18 +20,16 @@ def onevol_workflow(
 
     '''
 
-    import sys
     import os
     import nipype
     import nipype.pipeline as pe
     import nipype.interfaces.utility as utility
     import nipype.interfaces. fsl as fsl
     import PUMI.func_preproc.info.info_get as info_get
-    import PUMI.utils.utils_convert as utils_convert
-    import nipype.interfaces.afni as afni
     import nipype.interfaces.io as io
+    import PUMI.utils.globals as globals
 
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
 
@@ -63,8 +59,7 @@ def onevol_workflow(
     ds.inputs.base_directory = SinkDir
     ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
 
-    analysisflow = nipype.Workflow('onevolWorkflow')
-    analysisflow.base_dir = '.'
+    analysisflow = nipype.Workflow(wf_name)
     analysisflow.connect(inputspec, 'func', idx, 'in_files')
     analysisflow.connect(inputspec, 'func', fslroi, 'in_file')
     analysisflow.connect(idx, 'lastvolidx', fslroi, 't_min')

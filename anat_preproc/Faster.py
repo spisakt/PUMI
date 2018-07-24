@@ -1,7 +1,4 @@
-def fast_workflow(
-            SinkDir=".",
-            SinkTag="anat_preproc"
-           ):
+def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation"):
     """
 
      Modified version of CPAC.seg_preproc.seg_preproc
@@ -44,15 +41,12 @@ def fast_workflow(
     import nipype.interfaces.utility as utility
     import nipype.interfaces.fsl as fsl
     import nipype.interfaces.io as io
+    import PUMI.utils.QC as qc
+    import PUMI.utils.globals as globals
 
-    QCDir = os.path.abspath(SinkDir + "/QC")
-    if not os.path.exists(QCDir):
-        os.makedirs(QCDir)
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
-
-    fsldir = os.environ['FSLDIR']
 
     #Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=['brain']),
@@ -69,15 +63,8 @@ def fast_workflow(
     fast.inputs.probability_maps = True
     fast.inputs.out_basename = 'fast_'
 
-    # Create png images for quality check
-    slicer = pe.MapNode(interface=fsl.Slicer(all_axial=True),
-                        iterfield=['in_file'],
-                        name='slicer')
-    slicer.inputs.image_width = 5000
-    slicer.inputs.out_file = "func2anat_subj"
-    # set output all axial slices into one picture
-    slicer.inputs.colour_map = fsldir + '/etc/luts/renderjet.lut'
-    slicer.inputs.all_axial = True
+    myqc = qc.vol2png("tissue_segmentation", overlay=False)
+    myqc.inputs.slicer.colour_map = globals._FSLDIR_ + '/etc/luts/renderjet.lut'
 
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['probmap_csf',
@@ -95,12 +82,6 @@ def fast_workflow(
     ds.inputs.base_directory = SinkDir
     ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
 
-    # Save outputs which are important
-    ds_qc = pe.Node(interface=io.DataSink(),
-                 name='ds_qc')
-    ds_qc.inputs.base_directory = QCDir
-    ds_qc.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".png")]
-
     def pickindex(vec, i):
         #print "************************************************************************************************************************************************"
         #print vec
@@ -108,7 +89,7 @@ def fast_workflow(
         return [x[i] for x in vec]
 
     #Create a workflow to connect all those nodes
-    analysisflow = nipype.Workflow('fastWorkflow')
+    analysisflow = nipype.Workflow(wf_name)
     analysisflow.base_dir = '.'
     analysisflow.connect(inputspec, 'brain', fast, 'in_files')
     #nalysisflow.connect(fast, 'probability_maps', outputspec, 'probability_maps')
@@ -124,8 +105,6 @@ def fast_workflow(
     analysisflow.connect(fast, ('probability_maps', pickindex, 0), ds, 'fast_csf')
     analysisflow.connect(fast, ('probability_maps', pickindex, 1), ds, 'fast_gm')
     analysisflow.connect(fast, ('probability_maps', pickindex, 2), ds, 'fast_wm')
-
-    analysisflow.connect(fast, 'partial_volume_map', slicer, 'in_file')
-    analysisflow.connect(slicer, 'out_file', ds_qc, 'segmentation')
+    analysisflow.connect(fast, 'partial_volume_map', myqc, 'inputspec.bg_image')
 
     return analysisflow

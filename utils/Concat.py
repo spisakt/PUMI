@@ -1,7 +1,6 @@
 def concat_workflow(numconcat=2,
-                    SinkDir=".",
                     SinkTag="func_preproc",
-                    WorkingDirectory="."):
+                    wf_name="concat_txt"):
     """
 
 
@@ -36,9 +35,9 @@ def concat_workflow(numconcat=2,
     import nipype.interfaces.utility as utility
     import PUMI.utils.utils_convert as utils_convert
     from nipype.interfaces.utility import Function
+    import PUMI.utils.globals as globals
 
-
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
 
@@ -60,8 +59,7 @@ def concat_workflow(numconcat=2,
     outputspec = pe.Node(utility.IdentityInterface(fields=['concat_file']),
                                     name='outputspec')
     # Create workflow
-    analysisflow = nipype.Workflow('concatWorkflow')
-    analysisflow.base_dir = '.'
+    analysisflow = nipype.Workflow(wf_name)
     #connect
     for i in range(1, numconcat + 1):
         actparam = "par" + str(i)

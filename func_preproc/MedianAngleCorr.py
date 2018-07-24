@@ -90,9 +90,8 @@ def median_angle_correct(target_angle_deg, realigned_file):
     return corrected_file, angles_file
 
 def mac_workflow(target_angle=90,
-        SinkDir=".",
         SinkTag="func_preproc",
-        WorkingDirectory="."):
+        wf_name="median_angle_correction"):
     """
 
      Modified version of CPAC.median_angle.median_angle:
@@ -169,8 +168,10 @@ def mac_workflow(target_angle=90,
     import os
     import nipype.pipeline.engine as pe
     import nipype.interfaces.utility as utility
+    import PUMI.utils.globals as globals
+    import PUMI.utils.QC as qc
 
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
     #TODO set target angle...
@@ -189,14 +190,19 @@ def mac_workflow(target_angle=90,
                                 function=median_angle_correct),
                      iterfield=['realigned_file'],
                   name='median_angle_correct')
+
+    myqc = qc.timecourse2png("timeseries", tag="050_medang")
+
     #TODO set which files should be put into the datasink node...
     # Create workflow
-    analysisflow= pe.Workflow('macWorkflow')
-    analysisflow.base_dir = WorkingDirectory
+    analysisflow= pe.Workflow(wf_name)
     analysisflow.connect(inputspec, 'realigned_file', mac, 'realigned_file')
     analysisflow.connect(inputspec, 'target_angle', mac, 'target_angle_deg')
     analysisflow.connect(mac, 'corrected_file', outputspec, 'final_func')
     analysisflow.connect(mac, 'angles_file', outputspec, 'pc_angles')
+    analysisflow.connect(mac, 'corrected_file', myqc, 'inputspec.func')
+
+    #todo qc timeseries
 
     return analysisflow
 # After here, functions are manipulating in a group level.

@@ -5,13 +5,12 @@ def fieldmapper(func,
                 TE2,
                 dwell_time,
                 unwarp_direction="y-",
-                SinkDir=".",
-                SinkTag="func_fieldmapcorr"):
-    import psutil
-    import json
+                SinkTag="func_fieldmapcorr",
+                wf_name="fieldmap_correction"):
     import os
+    import PUMI.utils.globals as globals
 
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
     ###########################################
@@ -47,6 +46,7 @@ def fieldmapper(func,
     inputspec = pe.Node(utility.IdentityInterface(
         fields=['func', 'magnitude', 'phase', 'TE1', 'TE2', 'dwell_time', 'unwarp_direction']),
                                     name='inputspec')
+    #defaults:
     inputspec.inputs.func = func
     inputspec.inputs.magnitude = magnitude
     inputspec.inputs.phase = phase
@@ -89,16 +89,18 @@ def fieldmapper(func,
     outputspec2.inputs.base_directory = SinkDir
     outputspec2.inputs.regexp_substitutions = [("_NodeName_.{13}", "")]
 
+    myqc_orig = qc.vol2png("fieldmap_correction", "original")
+    myqc_unwarp = qc.vol2png("fieldmap_correction", "unwarped")
+
     # Very simple frontend for storing values into a JSON file.
     #NodeHash_6000024a5820 = pe.Node(interface=io.JSONFileSink(), name='NodeName_6000024a5820')
     #NodeHash_6000024a5820.inputs.out_file = OutJSON
 
     # Create a workflow to connect all those nodes
-    analysisflow = nipype.Workflow('FieldMapper')
+    analysisflow = nipype.Workflow(wf_name)
     analysisflow.base_dir = '.'
-    #analysisflow.connect(outputspec2, 'out_file', NodeHash_6000024a5820, 'fieldmap')
+
     analysisflow.connect(preparefm, 'out_fieldmap', outputspec2, 'fieldmap')
-    #analysisflow.connect(outputspec, 'out_file', NodeHash_6000024a5820, 'func_fieldmapcorr')
     analysisflow.connect(abs, 'abs', preparefm, 'delta_TE')
     analysisflow.connect(subtract, 'dif', abs, 'x')
     analysisflow.connect(inputspec, 'unwarp_direction', fugue, 'unwarp_direction')
@@ -114,6 +116,11 @@ def fieldmapper(func,
     analysisflow.connect(inputspec, 'phase', preparefm, 'in_phase')
     analysisflow.connect(erode, 'out_file', preparefm, 'in_magnitude')
     analysisflow.connect(inputspec, 'magnitude', bet, 'in_file')
+
+    analysisflow.connect(inputspec, 'func', myqc_orig, 'inputspec.bg_image')
+    analysisflow.connect(inputspec, 'magnitude', myqc_orig, 'inputspec.overlay_image')
+    analysisflow.connect(fugue, 'unwarped_file', myqc_unwarp, 'inputspec.bg_image')
+    analysisflow.connect(inputspec, 'magnitude', myqc_unwarp, 'inputspec.overlay_image')
 
     # Run the workflow
     #plugin = 'MultiProc'  # adjust your desired plugin here

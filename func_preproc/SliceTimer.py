@@ -1,8 +1,4 @@
-def slt_workflow(func="/home/balint/Dokumentumok/phd/essen/PAINTER/probe/s002/func_data.nii.gz",
-               slicetiming_txt="alt+z",
-               SinkDir=".",
-               SinkTag="func_preproc",
-               WorkingDirectory="."):
+def slt_workflow(slicetiming_txt="alt+z",SinkTag="func_preproc",wf_name="slicetiming_correction"):
 
     """
     Modified version of porcupine generated slicetiming code:
@@ -47,9 +43,9 @@ def slt_workflow(func="/home/balint/Dokumentumok/phd/essen/PAINTER/probe/s002/fu
     import PUMI.func_preproc.info.info_get as info_get
     import PUMI.utils.utils_convert as utils_convert
     import nipype.interfaces.afni as afni
-    import nipype.interfaces.io as io
+    import PUMI.utils.globals as globals
 
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
 
@@ -84,6 +80,8 @@ def slt_workflow(func="/home/balint/Dokumentumok/phd/essen/PAINTER/probe/s002/fu
     outputspec = pe.Node(utility.IdentityInterface(fields=['slicetimed', 'TR']),
                                     name='outputspec')
 
+    #todo: qc timeseries
+
     # Custom interface wrapping function JoinVal2Dict
     #func_joinval2dict = pe.Node(interface=utils_convert.JoinVal2Dict,
     #                            name='func_joinval2dict')
@@ -99,8 +97,7 @@ def slt_workflow(func="/home/balint/Dokumentumok/phd/essen/PAINTER/probe/s002/fu
 
 
     # Create a workflow to connect all those nodes
-    analysisflow = nipype.Workflow('slctWorkflow')
-    analysisflow.base_dir =WorkingDirectory
+    analysisflow = nipype.Workflow(wf_name)
     analysisflow.connect(inputspec, 'slicetiming_txt', sltcor, 'tpattern')
     analysisflow.connect(func_str2float, 'float', outputspec, 'TR')
     analysisflow.connect(inputspec, 'func', sltcor, 'in_file')

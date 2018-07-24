@@ -11,8 +11,10 @@ import PUMI.func_preproc.TemporalFiltering as tmpfilt
 import PUMI.func_preproc.DataCensorer as cens
 import PUMI.func_preproc.MedianAngleCorr as medangcor
 import nipype.interfaces.utility as utility
+import PUMI.utils.globals as globals
+import os
 
-def FuncProc( SinkDir=".", SinkTag="func_preproc"):
+def FuncProc(SinkTag="func_preproc", wf_name="funcproc"):
     """
         Performs processing of functional (resting-state) images:
 
@@ -37,27 +39,30 @@ def FuncProc( SinkDir=".", SinkTag="func_preproc"):
 
         """
 
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
+    if not os.path.exists(SinkDir):
+        os.makedirs(SinkDir)
+
     # Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=['func', 'cc_noise_roi']),
                         name='inputspec')
 
     # build the actual pipeline
     #myonevol = onevol.onevol_workflow(SinkDir=SinkDir)
-    mymc = mc.mc_workflow(SinkDir=SinkDir)
-    mycmpcor = cmpcor.compcor_workflow(SinkDir=SinkDir)
-    myconc=conc.concat_workflow(numconcat=2,SinkDir=SinkDir)
-    mynuisscor = nuisscorr.nuissremov_workflow(SinkDir=SinkDir)
-    mytmpfilt = tmpfilt.tmpfilt_workflow(SinkDir=SinkDir)
-    mycens = cens.datacens_workflow(SinkDir=SinkDir)
-    mymedangcor = medangcor.mac_workflow(SinkDir=SinkDir)
+    mymc = mc.mc_workflow()
+    mycmpcor = cmpcor.compcor_workflow()
+    myconc = conc.concat_workflow(numconcat=2)
+    mynuisscor = nuisscorr.nuissremov_workflow()
+    mytmpfilt = tmpfilt.tmpfilt_workflow()
+    mycens = cens.datacens_workflow()
+    mymedangcor = medangcor.mac_workflow()
 
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['mc_func']),
                          name='outputspec')
 
 
-    wf_mc = nipype.Workflow('FuncProc')
-    wf_mc.base_dir = '.'
+    wf_mc = nipype.Workflow(wf_name)
 
     wf_mc.connect([
         (inputspec, mymc,
