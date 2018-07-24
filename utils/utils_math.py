@@ -20,6 +20,18 @@ def sec2sigmaV(TR, sec):
     sigmaV=sec/(2*TR)
     return sigmaV
 
+# calculates colmeans, rowmenas or global mean, depenxding on the 'axis' parameter
+# and saves it to another txt
+def txt2MeanTxt(in_file, axis=None):
+    import numpy as np
+    import os
+    data = np.loadtxt(in_file, ) #header -> dropline
+    mean = data.mean(axis=axis)
+    print '******************'
+    print mean
+    np.savetxt('mean.txt', [mean])
+    return os.getcwd() + '/mean.txt'
+
 
 ###############################################
 
@@ -42,3 +54,7 @@ Abs = Function(input_names=['x'],
 Sec2sigmaV = Function(input_names=['TR', 'sec'],
                        output_names=['sigmaV'],
                        function=sec2sigmaV)
+
+Txt2meanTxt = Function(input_names=['in_file', 'axis'],
+                       output_names=['mean_file'],
+                       function=txt2MeanTxt)

@@ -271,7 +271,7 @@ def anat2mni_ants_workflow(
     analysisflow.connect(inputspec, 'reference_brain', reg, 'fixed_image')
     analysisflow.connect(inputspec, 'brain', reg, 'moving_image')
 
-    analysisflow.connect(reg, 'composite_transform',outputspec, 'nonlinear_xfm')
+    analysisflow.connect(reg, 'composite_transform', outputspec, 'nonlinear_xfm')
     analysisflow.connect(reg, 'warped_image',outputspec, 'output_brain')
     analysisflow.connect(reg, 'warped_image', ds, 'anat2mni_std')
     analysisflow.connect(reg, 'composite_transform', ds, 'anat2mni_warpfield')

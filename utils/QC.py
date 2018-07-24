@@ -127,3 +127,47 @@ def timecourse2png(qcname, tag="", type=TsPlotType.ALL, SinkDir=".", QCDIR="QC")
     return analysisflow
 
 
+def fMRI2QC(qcname, tag="", SinkDir=".", QCDIR="QC"):
+    import os
+    import nipype
+    import nipype.pipeline as pe
+    import nipype.interfaces.utility as utility
+    import PUMI.plot.image as plot
+
+    QCDir = os.path.abspath(SinkDir + "/" + QCDIR)
+    if not os.path.exists(QCDir):
+        os.makedirs(QCDir)
+
+    if tag:
+        tag = "_" + tag
+
+    # Basic interface class generates identity mappings
+    inputspec = pe.Node(utility.IdentityInterface(fields=['func', 'atlas', 'confounds']),
+                        name='inputspec')
+    inputspec.inputs.atlas = os.environ['FSLDIR'] + '/data/atlases/HarvardOxford/HarvardOxford-cort-maxprob-thr25-2mm.nii.gz'
+
+
+    plotfmri = pe.MapNode(interface=Function(input_names=['func', 'atlaslabels', 'confounds', 'output_file'],
+                                                  output_names=['plotfile'],
+                                                  function=plot.plot_fmri_qc),
+                               iterfield=['func', 'confounds'],
+                               name="qc_fmri_orig")
+    plotfmri.inputs.output_file = "qc_fmri.png"
+    # default atlas works only for standardized, 2mm-resoultion data
+
+    # Save outputs which are important
+    ds_qc = pe.Node(interface=io.DataSink(),
+                    name='ds_qc')
+    ds_qc.inputs.base_directory = QCDir
+    ds_qc.inputs.regexp_substitutions = [("(\/)[^\/]*$", tag + ".png")]
+
+    # Create a workflow
+    analysisflow = nipype.Workflow(name=qcname + tag + '_qc')
+
+    analysisflow.connect(inputspec, 'func', plotfmri, 'func')
+    analysisflow.connect(inputspec, 'atlas', plotfmri, 'atlaslabels')
+    analysisflow.connect(inputspec, 'confounds', plotfmri, 'confounds')
+
+    analysisflow.connect(plotfmri, 'plotfile', ds_qc, qcname)
+
+    return analysisflow

@@ -75,17 +75,13 @@ def aroma_workflow(fwhm=0, # in mm
                               iterfield=['in_file'],
                               name="smoother")
     myqc_before = qc.timecourse2png("ts_aroma", tag="1_original", type=qc.TsPlotType.ROI)
-    #myqc_before.inputs.inputspec.x = 48
-    #myqc_before.inputs.inputspec.y = 48
-    #myqc_before.inputs.inputspec.z = 18
 
     aroma = pe.MapNode(interface=ICA_AROMA(denoise_type='both'),
                        iterfield=['in_file',
                                   'motion_parameters',
                                   'mat_file',
                                   'fnirt_warp_file',
-                                  'mask',
-                                  'out_dir'],
+                                  'mask'],
                        name="ICA_AROMA")
     aroma.inputs.denoise_type = 'both'
     aroma.inputs.out_dir = 'AROMA_out'
