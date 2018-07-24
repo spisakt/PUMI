@@ -1,8 +1,7 @@
 def tmpfilt_workflow(highpass_insec=100,
                      lowpass_insec=1,
-                     SinkDir=".",
                      SinkTag="func_preproc",
-                     WorkingDirectory="."):
+                     wf_name="temporal_filtering"):
     #TODO kivezetni a higpass_inseces lowpass_insec valtozokat egy(esetleg kettto)-vel feljebbi szintekre.
     """
     Modified version of porcupine generated temporal filtering code:
@@ -48,8 +47,10 @@ def tmpfilt_workflow(highpass_insec=100,
     import PUMI.utils.utils_convert as utils_convert
     import nipype.interfaces.fsl as fsl
     import nipype.interfaces.io as io
+    import PUMI.utils.globals as globals
+    import PUMI.utils.QC as qc
 
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
 
@@ -86,6 +87,9 @@ def tmpfilt_workflow(highpass_insec=100,
     TRvalue = pe.MapNode(interface=info_get.TR,
                          iterfield=['in_file'],
                       name='TRvalue')
+
+    myqc = qc.timecourse2png("timeseries", tag="030_filtered_" + str(lowpass_insec) + "_" + str(highpass_insec) + "_sec")
+
     #Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['func_tmplfilt']),
                                name = 'outputspec')
@@ -99,8 +103,7 @@ def tmpfilt_workflow(highpass_insec=100,
 
 
     #Create a workflow to connect all those nodes
-    analysisflow = nipype.Workflow('tmpfiltWorkflow')
-    analysisflow.base_dir = WorkingDirectory
+    analysisflow = nipype.Workflow(wf_name)
     analysisflow.connect(inputspec, 'func', tmpfilt, 'in_file')
     analysisflow.connect(inputspec, 'func', TRvalue, 'in_file')
     analysisflow.connect(TRvalue, 'TR', func_str2float, 'str')
@@ -112,6 +115,7 @@ def tmpfilt_workflow(highpass_insec=100,
     analysisflow.connect(func_sec2sigmaV_2, 'sigmaV', tmpfilt, 'lowpass_sigma')
     analysisflow.connect(tmpfilt, 'out_file', ds, 'tmpfilt')
     analysisflow.connect(tmpfilt, 'out_file', outputspec, 'func_tmplfilt')
+    analysisflow.connect(tmpfilt, 'out_file', myqc, 'inputspec.func')
 
 
 

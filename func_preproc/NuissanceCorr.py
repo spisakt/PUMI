@@ -1,6 +1,4 @@
-def nuissremov_workflow(SinkDir=".",
-                        SinkTag="func_preproc",
-                        WorkingDirectory="."):
+def nuissremov_workflow(SinkTag="func_preproc", wf_name="nuisance_correction"):
     """
     The script uses the noise information to regress it out from the data.
    Workflow inputs:
@@ -28,9 +26,10 @@ def nuissremov_workflow(SinkDir=".",
     import nipype.interfaces.utility as utility
     import nipype.interfaces.fsl as fsl
     import nipype.interfaces.io as io
+    import PUMI.utils.QC as qc
+    import PUMI.utils.globals as globals
 
-
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
 
@@ -44,6 +43,8 @@ def nuissremov_workflow(SinkDir=".",
                               iterfield=['design_file','in_file'],
                            name='nuisregression')
 
+    myqc = qc.timecourse2png("timeseries", tag="020_nuiscorr")
+
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['out_file']),
                          name='outputspec')
@@ -52,12 +53,14 @@ def nuissremov_workflow(SinkDir=".",
     ds = pe.Node(interface=io.DataSink(), name='ds')
     ds.inputs.base_directory = SinkDir
 
+    #TODO: qc timeseries before and after
+
     # Generate workflow
-    analysisflow = nipype.Workflow('nuissWorkflow')
-    analysisflow.base_dir = WorkingDirectory
+    analysisflow = nipype.Workflow(wf_name)
     analysisflow.connect(inputspec, 'in_file', nuisregression, 'in_file')
     analysisflow.connect(inputspec, 'design_file', nuisregression, 'design_file')
     analysisflow.connect(nuisregression, 'out_file', outputspec, 'out_file')
     analysisflow.connect(nuisregression, 'out_file', ds, 'func_nuiss_corrected')
+    analysisflow.connect(nuisregression, 'out_file', myqc, 'inputspec.func')
 
     return analysisflow

@@ -1,5 +1,4 @@
-def bbr_workflow(SinkDir=".",
-                 SinkTag="anat_preproc"):
+def bbr_workflow(SinkTag="anat_preproc", wf_name="func2anat"):
 
 
     """
@@ -45,15 +44,11 @@ def bbr_workflow(SinkDir=".",
     import nipype.interfaces.io as io
     import PUMI.func_preproc.Onevol as onevol
     import PUMI.utils.QC as qc
+    import PUMI.utils.globals as globals
 
-    QCDir = os.path.abspath(SinkDir + "/QC")
-    if not os.path.exists(QCDir):
-        os.makedirs(QCDir)
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
-
-    fsldir = os.environ['FSLDIR']
 
     # Define inputs of the workflow
     inputspec = pe.Node(utility.IdentityInterface(fields=['func',
@@ -156,7 +151,7 @@ def bbr_workflow(SinkDir=".",
                                                             'gm_mask_in_funcspace']),
                          name='outputspec')
 
-    analysisflow = pe.Workflow(name='Func2Anat')
+    analysisflow = pe.Workflow(name=wf_name)
     analysisflow.base_dir = '.'
     analysisflow.connect(inputspec, 'func', linear_reg, 'in_file')
     analysisflow.connect(inputspec, 'skull',linear_reg, 'reference')
@@ -179,14 +174,12 @@ def bbr_workflow(SinkDir=".",
     analysisflow.connect(inputspec, 'anat_wm_segmentation', wm_bb_mask, 'in_file')
     analysisflow.connect(inputspec, 'anat_csf_segmentation', csf_bb_mask, 'in_file')
     analysisflow.connect(inputspec, 'anat_gm_segmentation', gm_bb_mask, 'in_file')
-
     analysisflow.connect(bbreg_func_to_anat, 'out_file', outputspec, 'func_sample2anat')
     analysisflow.connect(bbreg_func_to_anat, 'out_matrix_file', outputspec, 'func_to_anat_linear_xfm')
     analysisflow.connect(reg_anatmask_to_func1,'out_file',outputspec, 'csf_mask_in_funcspace')
     analysisflow.connect(reg_anatmask_to_func2,'out_file',outputspec, 'wm_mask_in_funcspace')
     analysisflow.connect(reg_anatmask_to_func3, 'out_file', outputspec, 'gm_mask_in_funcspace')
     analysisflow.connect(convertmatrix, 'out_file',outputspec,'anat_to_func_linear_xfm')
-
     analysisflow.connect(bbreg_func_to_anat, 'out_file', ds, 'bbr')
     analysisflow.connect(bbreg_func_to_anat, 'out_file', myqc, 'inputspec.bg_image')
     analysisflow.connect(wm_bb_mask, 'out_file', myqc, 'inputspec.overlay_image')

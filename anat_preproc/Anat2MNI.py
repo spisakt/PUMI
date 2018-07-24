@@ -5,11 +5,10 @@ import nipype.interfaces.fsl as fsl
 import nipype.interfaces.io as io
 import copy, pprint
 from nipype.interfaces.ants import Registration
+import PUMI.utils.QC as qc
+import PUMI.utils.globals as globals
 
-def anat2mni_fsl_workflow(
-                      SinkDir=".",
-                      SinkTag="anat_preproc"
-           ):
+def anat2mni_fsl_workflow(SinkTag="anat_preproc", wf_name="anat2mni_fsl"):
 
     """
     Modified version of CPAC.registration.registration:
@@ -48,12 +47,9 @@ def anat2mni_fsl_workflow(
 
     """
 
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath( globals._SinkDir_+ "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
-
-    fsldir=os.environ['FSLDIR']
-
 
     # Define inputs of workflow
     inputspec = pe.Node(utility.IdentityInterface(fields=['brain',
@@ -64,9 +60,9 @@ def anat2mni_fsl_workflow(
                                                           'fnirt_config']),
                         name='inputspec')
 
-    inputspec.inputs.reference_brain = fsldir + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
-    inputspec.inputs.reference_skull = fsldir + "/data/standard/MNI152_T1_2mm.nii.gz"
-    inputspec.inputs.ref_mask = fsldir + "/data/standard/MNI152_T1_2mm_brain_mask_dil.nii.gz"
+    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
+    inputspec.inputs.reference_skull = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm.nii.gz"
+    inputspec.inputs.ref_mask = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain_mask_dil.nii.gz"
     inputspec.inputs.fnirt_config = "T1_2_MNI152_2mm"
 
 
@@ -95,24 +91,15 @@ def anat2mni_fsl_workflow(
     inv_flirt_xfm.inputs.invert_xfm = True
 
     # Create png images for quality check
-    slicer = pe.MapNode(interface=fsl.Slicer(all_axial=True),
-                        iterfield=['in_file'],
-                        name='slicer')
-    slicer.inputs.image_width = 1400
-    # set output all axial slices into one picture
-    slicer.inputs.all_axial = True
-    slicer.inputs.threshold_edges = 0.12
-    slicer.inputs.image_edges = fsldir + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
+    myqc = qc.vol2png("anat2mni", "FSL", overlayiterated=False)
+    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
+    myqc.inputs.slicer.image_width = 5000
+    myqc.inputs.slicer.threshold_edges = 0.12
 
     # Save outputs which are important
     ds = pe.Node(interface=io.DataSink(), name='ds')
     ds.inputs.base_directory = SinkDir
     ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
-
-    # Save outputs which are important
-    ds2 = pe.Node(interface=io.DataSink(), name='ds_slicer')
-    ds2.inputs.base_directory = SinkDir
-    ds2.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".png")]
 
     # Define outputs of the workflow
     outputspec = pe.Node(utility.IdentityInterface(fields=['output_brain',
@@ -122,7 +109,7 @@ def anat2mni_fsl_workflow(
                          name='outputspec')
 
     # Create workflow nad connect nodes
-    analysisflow = pe.Workflow(name='anat2mniWorkflow')
+    analysisflow = pe.Workflow(name=wf_name)
     analysisflow.connect(inputspec, 'brain',linear_reg, 'in_file')
     analysisflow.connect(inputspec, 'reference_brain',linear_reg, 'reference')
     analysisflow.connect(inputspec, 'skull',nonlinear_reg, 'in_file')
@@ -143,16 +130,13 @@ def anat2mni_fsl_workflow(
     analysisflow.connect(linear_reg, 'out_matrix_file',outputspec, 'linear_xfm')
     analysisflow.connect(brain_warp, 'out_file', ds, 'anat2mni_std')
     analysisflow.connect(nonlinear_reg, 'fieldcoeff_file', ds, 'anat2mni_warpfield')
-    analysisflow.connect(brain_warp, 'out_file', slicer, 'in_file')
-    analysisflow.connect(slicer, 'out_file', ds2, 'anat2mni_regcheck')
+    analysisflow.connect(brain_warp, 'out_file', myqc, 'inputspec.bg_image')
+
 
     return analysisflow
 
 
-def anat2mni_ants_workflow(
-                      SinkDir=".",
-                      SinkTag="anat_preproc"
-           ):
+def anat2mni_ants_workflow(SinkTag="anat_preproc", wf_name="anat2mni_ants"):
 
     """
     Register skull and brain extracted image to MNI space and return the transformation martices.
@@ -183,15 +167,9 @@ def anat2mni_ants_workflow(
 
 
     """
-    QCDir = os.path.abspath(SinkDir + "/QC")
-    if not os.path.exists(QCDir):
-        os.makedirs(QCDir)
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
-
-    fsldir = os.environ['FSLDIR']
-
 
     # Define inputs of workflow
     inputspec = pe.Node(utility.IdentityInterface(fields=['brain',
@@ -200,8 +178,8 @@ def anat2mni_ants_workflow(
                                                           'reference_skull']),
                         name='inputspec')
 
-    inputspec.inputs.reference_brain = fsldir + "/data/standard/MNI152_T1_1mm_brain.nii.gz"
-    inputspec.inputs.reference_skull = fsldir + "/data/standard/MNI152_T1_1mm.nii.gz"
+    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm_brain.nii.gz"
+    inputspec.inputs.reference_skull = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm.nii.gz"
 
     # Multi-stage registration node with ANTS
     reg = pe.MapNode(interface=Registration(),
@@ -237,25 +215,17 @@ def anat2mni_ants_workflow(
     # Calculate the invers of the linear transformation
 
     # Create png images for quality check
-    slicer = pe.MapNode(interface=fsl.Slicer(all_axial=True),
-                        iterfield=['in_file'],
-                        name='slicer')
-    slicer.inputs.image_width = 5000
-    # set output all axial slices into one picture
-    slicer.inputs.all_axial = True
-    slicer.inputs.out_file = "func2anat_subj"
-    slicer.inputs.threshold_edges = 0.1
-    slicer.inputs.image_edges = fsldir + "/data/standard/MNI152_T1_1mm_brain.nii.gz"
+    # Create png images for quality check
+    myqc = qc.vol2png("anat2mni", "ANTS", overlayiterated=False)
+    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm_brain.nii.gz"
+    myqc.inputs.slicer.image_width = 5000
+    myqc.inputs.slicer.threshold_edges = 0.1  # for the 1mm template
+
 
     # Save outputs which are important
     ds = pe.Node(interface=io.DataSink(), name='ds_nii')
     ds.inputs.base_directory = SinkDir
     #ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
-
-    # Save outputs which for qualitiy check
-    ds2 = pe.Node(interface=io.DataSink(), name='ds_qc')
-    ds2.inputs.base_directory = QCDir
-    ds2.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".png")]
 
     # Define outputs of the workflow
     outputspec = pe.Node(utility.IdentityInterface(fields=['output_brain',
@@ -266,16 +236,15 @@ def anat2mni_ants_workflow(
                          name='outputspec')
 
     # Create workflow nad connect nodes
-    analysisflow = pe.Workflow(name='anat2mniWorkflow')
+    analysisflow = pe.Workflow(name=wf_name)
 
     analysisflow.connect(inputspec, 'reference_brain', reg, 'fixed_image')
     analysisflow.connect(inputspec, 'brain', reg, 'moving_image')
 
-    analysisflow.connect(reg, 'composite_transform',outputspec, 'nonlinear_xfm')
+    analysisflow.connect(reg, 'composite_transform', outputspec, 'nonlinear_xfm')
     analysisflow.connect(reg, 'warped_image',outputspec, 'output_brain')
     analysisflow.connect(reg, 'warped_image', ds, 'anat2mni_std')
     analysisflow.connect(reg, 'composite_transform', ds, 'anat2mni_warpfield')
-    analysisflow.connect(reg, 'warped_image', slicer, 'in_file')
-    analysisflow.connect(slicer, 'out_file', ds2, 'anat2mni')
+    analysisflow.connect(brain_warp, 'out_file', myqc, 'inputspec.bg_image')
 
     return analysisflow

@@ -1,7 +1,4 @@
-def bet_workflow(
-        Robust=True,
-        SinkDir=".",
-        SinkTag="anat_preproc"):
+def bet_workflow(Robust=True, SinkTag="anat_preproc", wf_name="brain_extraction"):
 
     """
     Modified version of CPAC.anat_preproc.anat_preproc:
@@ -43,11 +40,10 @@ def bet_workflow(
     import nipype.interfaces.utility as utility
     import nipype.interfaces.fsl as fsl
     import nipype.interfaces.io as io
+    import PUMI.utils.QC as qc
+    import PUMI.utils.globals as globals
 
-    QCDir = os.path.abspath(SinkDir + "/QC")
-    if not os.path.exists(QCDir):
-        os.makedirs(QCDir)
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
 
@@ -64,19 +60,13 @@ def bet_workflow(
     bet.inputs.mask=True
     #bet.inputs.robust=Robust
 
-    # Create png images for quality check
-    slicer = pe.MapNode(interface=fsl.Slicer(all_axial=True),
-                        iterfield=['in_file'],
-                        name='slicer')
-    slicer.inputs.image_width = 5000
-    slicer.inputs.out_file = "func2anat_subj"
-    # set output all axial slices into one picture
-    slicer.inputs.all_axial = True
+    myqc = qc.vol2png("brain_extraction", overlay=False)
 
     #Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['brain',
-                                                           'brain_mask',
-                                                           'skull']),
+                                                           'brain_mask'
+                                                           #'skull'  #TODO: is it supposed to be really the skull or the full head image?
+                                                           ]),
                          name = 'outputspec')
 
     # Save outputs which are important
@@ -85,14 +75,8 @@ def bet_workflow(
     ds.inputs.base_directory = SinkDir
     ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
 
-    # Save outputs which are important
-    ds_qc = pe.Node(interface=io.DataSink(),
-                 name='ds_qc')
-    ds_qc.inputs.base_directory = QCDir
-    ds_qc.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".png")]
-
     #Create a workflow to connect all those nodes
-    analysisflow = nipype.Workflow('betWorkflow') # The name here determine the folder of the workspace
+    analysisflow = nipype.Workflow(wf_name)  # The name here determine the folder of the workspace
     analysisflow.base_dir = '.'
     analysisflow.connect(inputspec, 'anat', bet, 'in_file')
     analysisflow.connect(inputspec, 'opt_R', bet, 'robust')
@@ -100,9 +84,8 @@ def bet_workflow(
     analysisflow.connect(bet, 'out_file', outputspec, 'brain')
     analysisflow.connect(bet, 'out_file', ds, 'bet_brain')
     analysisflow.connect(bet, 'mask_file', ds, 'bet_mask')
-    analysisflow.connect(bet, 'out_file', slicer, 'in_file')
-    analysisflow.connect(inputspec, 'anat', outputspec, 'skull')
-    analysisflow.connect(slicer, 'out_file', ds_qc, 'brain_extraction')
+
+    analysisflow.connect(bet, 'out_file', myqc, 'inputspec.bg_image')
 
     return analysisflow
 

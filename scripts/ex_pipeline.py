@@ -12,16 +12,20 @@ import PUMI.FuncProc as funcproc
 # import the necessary workflows from the func_preproc folder
 import PUMI.anat_preproc.Func2Anat as bbr
 import os
+import PUMI.utils.globals as globals
 #import PUMI.utils.addimages as adding
 
 # parse command line arguments
 if (len(sys.argv) <= 2):
     print("Please specify command line arguments!")
     print("Usage:")
-    print(sys.argv[0] + " <\"highres_data_template\"> <\"func_data_template\">")
+    print(sys.argv[0] + " <\"highres_data_template\"> <\"func_data_template\"> [results_sink_directory]")
     print("Example:")
     print(sys.argv[0] + " \"highres_data/subject_*.nii.gz\" \"func_data/subject_*.nii.gz\"")
     quit()
+
+if (len(sys.argv) > 3):
+    globals._SinkDir_ = sys.argv[3]
 
 # create data grabber
 datagrab = pe.Node(nio.DataGrabber(outfields=['func', 'struct']), name='data_grabber')
@@ -62,20 +66,21 @@ totalWorkflow.connect([
      [('struct', 'in_file')]),
     (reorient_struct, myanatproc,
      [('out_file', 'inputspec.anat')]),
+    (reorient_struct, mybbr,
+     [('out_file', 'inputspec.skull')]),
     (datagrab, reorient_func,
      [('func', 'in_file')]),
     (reorient_func, mybbr,
      [('out_file', 'inputspec.func')]),
     (myanatproc, mybbr,
-      [('outputspec.skull', 'inputspec.skull'),
-       ('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
+      [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
        ('outputspec.probmap_csf', 'inputspec.anat_csf_segmentation'),
-       ('outputspec.probmap_gm', 'inputspec.anat_gm_segmentation')]),
+       ('outputspec.probmap_gm', 'inputspec.anat_gm_segmentation')])
 
     ])
 
 # functional part
-totalWorkflow.connect([
+"""totalWorkflow.connect([
     (reorient_func, myfuncproc,
      [('out_file', 'inputspec.func')]),
     (mybbr,add_masks,
@@ -84,6 +89,7 @@ totalWorkflow.connect([
     (add_masks,myfuncproc,
      [('out_file','inputspec.cc_noise_roi')])
     ])
+    """
 
 
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)

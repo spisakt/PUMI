@@ -1,6 +1,5 @@
-def mc_workflow(SinkDir = ".",
-                SinkTag = "func_preproc",
-                WorkingDirectory="."):
+def mc_workflow(SinkTag = "func_preproc",
+                wf_name="motion_correction"):
 
     """
     Modified version of CPAC.func_preproc.func_preproc and CPAC.generate_motion_statistics.generate_motion_statistics:
@@ -45,13 +44,15 @@ def mc_workflow(SinkDir = ".",
     import nipype.interfaces.fsl as fsl
     import PUMI.func_preproc.info.info_get as info_get
     import nipype.interfaces.io as io
+    import PUMI.utils.globals as globals
+    import PUMI.utils.QC as qc
 
-    QCDir = os.path.abspath(SinkDir + "/QC")
-    if not os.path.exists(QCDir):
-        os.makedirs(QCDir)
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
+    QCDir = os.path.abspath(globals._SinkDir_ + "/" + globals._QCDir_)
+    if not os.path.exists(QCDir):
+        os.makedirs(QCDir)
 
 
     # Basic interface class generates identity mappings
@@ -77,6 +78,8 @@ def mc_workflow(SinkDir = ".",
     mcflirt.inputs.save_plots = True
     mcflirt.inputs.save_rms = True
     mcflirt.inputs.stats_imgs = True
+
+    myqc = qc.timecourse2png("timeseries", tag="010_motioncorr")
 
     # Calculate Friston24 parameters
     calc_friston = pe.MapNode(utility.Function(input_names=['in_file'],
@@ -123,8 +126,7 @@ def mc_workflow(SinkDir = ".",
 
     #TODO set the proper images which has to be saved in a the datasink specified directory
     # Create a workflow to connect all those nodes
-    analysisflow = nipype.Workflow('mcWorkflow')
-    analysisflow.base_dir = WorkingDirectory
+    analysisflow = nipype.Workflow(wf_name)
     analysisflow.connect(inputspec, 'func', mcflirt, 'in_file')
     analysisflow.connect(inputspec, 'func', lastvolnum, 'in_files')
     analysisflow.connect(lastvolnum, 'lastvolidx', mcflirt, 'ref_vol')
@@ -143,6 +145,7 @@ def mc_workflow(SinkDir = ".",
     analysisflow.connect(mcflirt, 'par_file', plot_motion_tra, 'in_file')
     analysisflow.connect(plot_motion_rot, 'out_file', ds_qc, 'mc_rot')
     analysisflow.connect(plot_motion_tra, 'out_file', ds_qc, 'mc_trans')
+    analysisflow.connect(mcflirt, 'out_file', myqc, 'inputspec.func')
 
     return analysisflow
 

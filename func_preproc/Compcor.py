@@ -1,6 +1,4 @@
-def compcor_workflow(SinkDir=".",
-                     SinkTag="func_preproc",
-                     WorkingDirectory="."):
+def compcor_workflow(SinkTag="func_preproc", wf_name="compcor"):
     """
 
 
@@ -49,11 +47,10 @@ def compcor_workflow(SinkDir=".",
     import PUMI.utils.utils_convert as utils_convert
     import nipype.interfaces.io as io
     import nipype.interfaces.utility as utility
+    import PUMI.utils.QC as qc
+    import PUMI.utils.globals as globals
 
-    QCDir = os.path.abspath(SinkDir + "/QC")
-    if not os.path.exists(QCDir):
-        os.makedirs(QCDir)
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
 
@@ -61,6 +58,8 @@ def compcor_workflow(SinkDir=".",
     inputspec = pe.Node(utility.IdentityInterface(fields=['func_aligned',
                                                           'mask_file']),
                         name='inputspec')
+
+    myqc = qc.vol2png("compcor_noiseroi")
 
     # Calculate compcor files
     compcor=pe.MapNode(interface=cnf.ACompCor(pre_filter=False,header_prefix=""),
@@ -91,8 +90,7 @@ def compcor_workflow(SinkDir=".",
     ds_text.inputs.base_directory = SinkDir
 
     # Create a workflow to connect all those nodes
-    analysisflow = nipype.Workflow('compcorWorkflow')
-    analysisflow.base_dir = WorkingDirectory
+    analysisflow = nipype.Workflow(wf_name)
     analysisflow.connect(inputspec, 'func_aligned', compcor, 'realigned_file')
     analysisflow.connect(inputspec, 'func_aligned', TRvalue, 'in_file')
     analysisflow.connect(TRvalue, 'TR', func_str2float, 'str')
@@ -102,5 +100,8 @@ def compcor_workflow(SinkDir=".",
     analysisflow.connect(compcor, 'components_file',drop_firstline,'txt')
     analysisflow.connect(drop_firstline, 'droppedtxtfloat', outputspec, 'components_file')
     analysisflow.connect(compcor, 'components_file', ds_text, 'compcor_noise')
+
+    analysisflow.connect(inputspec, 'func_aligned', myqc, 'inputspec.bg_image')
+    analysisflow.connect(inputspec, 'mask_file', myqc, 'inputspec.overlay_image')
 
     return analysisflow

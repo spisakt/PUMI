@@ -13,10 +13,8 @@ def extract_motionICs(aroma_dir):
     return os.path.join(os.getcwd(),'motionICs.txt')
 
 
-def aroma_workflow(fwhm=0,
-                SinkDir = ".",
-                SinkTag = "func_preproc",
-                WorkingDirectory="."):
+def aroma_workflow(fwhm=0, # in mm
+                SinkTag = "func_preproc", wf_name="ICA_AROMA"):
 
     """
    ICA AROMA method embedded into PUMI
@@ -50,12 +48,9 @@ def aroma_workflow(fwhm=0,
     import PUMI.utils.QC as qc
     from nipype.interfaces.fsl import Smooth
     import os
+    import PUMI.utils.globals as globals
 
-    QCDir = os.path.abspath(SinkDir + "QC")
-    if not os.path.exists(QCDir):
-        os.makedirs(QCDir)
-
-    SinkDir = os.path.abspath(SinkDir + "/" + SinkTag)
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
 
@@ -74,24 +69,20 @@ def aroma_workflow(fwhm=0,
         smoother = pe.MapNode(interface=Smooth(fwhm=fwhm),
                               iterfield=['in_file'],
                               name="smoother")
-    myqc_before = qc.timecourse2png("ts_aroma", tag="1_original", type=qc.TsPlotType.ROI)
-    #myqc_before.inputs.inputspec.x = 48
-    #myqc_before.inputs.inputspec.y = 48
-    #myqc_before.inputs.inputspec.z = 18
+    myqc_before = qc.timecourse2png("timeseries", tag="1_original")
 
     aroma = pe.MapNode(interface=ICA_AROMA(denoise_type='both'),
                        iterfield=['in_file',
                                   'motion_parameters',
                                   'mat_file',
                                   'fnirt_warp_file',
-                                  'mask',
-                                  'out_dir'],
+                                  'mask'],
                        name="ICA_AROMA")
     aroma.inputs.denoise_type = 'both'
     aroma.inputs.out_dir = 'AROMA_out'
 
-    myqc_after_nonaggr = qc.timecourse2png("ts_aroma", tag="2_nonaggressive", type=qc.TsPlotType.ROI)
-    myqc_after_aggr = qc.timecourse2png("ts_aroma", tag="3_aggressive", type=qc.TsPlotType.ROI)  # put these in the same QC dir
+    myqc_after_nonaggr = qc.timecourse2png("timeseries", tag="2_nonaggressive")
+    myqc_after_aggr = qc.timecourse2png("timeseries", tag="3_aggressive")  # put these in the same QC dir
 
     getMotICs=pe.MapNode(interface=Function(input_names=['aroma_dir'],
                                             output_names=['motion_ICs'],
@@ -120,7 +111,7 @@ def aroma_workflow(fwhm=0,
                          name='outputspec')
     outputspec.inputs.fwhm = fwhm
 
-    analysisflow = pe.Workflow(name='AROMA')
+    analysisflow = pe.Workflow(name=wf_name)
     if fwhm != 0:
         analysisflow.connect(inputspec, 'mc_func', smoother, 'in_file')
         analysisflow.connect(smoother, 'smoothed_file', aroma, 'in_file')
@@ -139,9 +130,9 @@ def aroma_workflow(fwhm=0,
 
     analysisflow.connect(inputspec, 'qc_mask', myqc_before, 'inputspec.mask')
     analysisflow.connect(aroma, 'aggr_denoised_file', myqc_after_aggr, 'inputspec.func')
-    analysisflow.connect(inputspec, 'qc_mask', myqc_after_aggr, 'inputspec.mask')
+    #analysisflow.connect(inputspec, 'qc_mask', myqc_after_aggr, 'inputspec.mask')
     analysisflow.connect(aroma, 'nonaggr_denoised_file', myqc_after_nonaggr, 'inputspec.func')
-    analysisflow.connect(inputspec, 'qc_mask', myqc_after_nonaggr, 'inputspec.mask')
+    #analysisflow.connect(inputspec, 'qc_mask', myqc_after_nonaggr, 'inputspec.mask')
 
     analysisflow.connect(aroma, 'aggr_denoised_file', outputspec, 'aggr_denoised_file')
     analysisflow.connect(aroma, 'nonaggr_denoised_file', outputspec, 'nonaggr_denoised_file')

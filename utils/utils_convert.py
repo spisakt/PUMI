@@ -61,6 +61,20 @@ def concatenate(par1, par2='', par3='', par4='', par5='', par6='', par7='', par8
     np.savetxt('parfiles', totpar)
     return os.getcwd() + '/parfiles'
 
+
+def list2TxtFile(in_list):
+    import numpy as np
+    import os
+    print '************'
+    print in_list
+
+    x = []
+    for i in in_list:
+        x.append(np.loadtxt(i))
+
+    np.savetxt('params.txt', x)
+    return os.getcwd() + '/params.txt'
+
 ###############################################
 
 Val2Dict = Function(input_names=['val'],
@@ -83,3 +97,6 @@ DropFirstLine = Function(input_names=['txt'],
                        output_names=['droppedtxtfloat'],
                        function=drop_firstline)
 
+List2TxtFile = Function(input_names=['in_list'],
+                       output_names=['txt_file'],
+                       function=list2TxtFile)

@@ -9,12 +9,19 @@ import nipype.interfaces.io as nio
 import nipype.interfaces.fsl as fsl
 import PUMI.AnatProc as anatproc
 import PUMI.func_preproc.IcaAroma as aroma
+import PUMI.func_preproc.func2standard as func2standard
 import PUMI.anat_preproc.Func2Anat as bbr
 from nipype.interfaces import fsl
 import PUMI.func_preproc.MotionCorrecter as mc
+from nipype.interfaces.utility import Function
+import PUMI.func_preproc.DataCensorer as dc
+
 from nipype.interfaces import afni
 import PUMI.func_preproc.info.info_get as info_get
 import os
+import PUMI.utils.utils_math as utils_math
+import PUMI.utils.utils_convert as utils_convert
+import PUMI.utils.QC as qc
 # parse command line arguments
 if (len(sys.argv) <= 2):
     print("Please specify command line arguments!")
@@ -51,7 +58,6 @@ mybet = pe.MapNode(interface=fsl.BET(frac=0.3, mask=True),
                    iterfield=['in_file'],
                    name="func_bet")
 
-
 # Get TR value from header
 #TRvalue = pe.MapNode(interface=info_get.TR,
 #                     iterfield=['in_file'],
@@ -68,7 +74,33 @@ scale_glob_4d = pe.MapNode(interface=fsl.ImageMaths(op_string="-ing 1000"),
                            name='scale')
 
 #todo: parametrize fwhm
-myaroma = aroma.aroma_workflow(fwhm=6)
+myaroma = aroma.aroma_workflow(fwhm=8)
+
+func2std = func2standard.func2mni(wf_name='func2std')
+func2std_aroma_nonaggr = func2standard.func2mni(wf_name='func2std_aroma_nonaggr')
+func2std_aroma_aggr = func2standard.func2mni(wf_name='func2std_aroma_aggr')
+
+
+# Calculate FD based on Power's method
+calculate_FD = pe.MapNode(Function(input_names=['in_file'],
+                                         output_names=['out_file'],
+                                         function=dc.calculate_FD_P),
+                              iterfield=['in_file'],
+                           name='calculate_FD')
+
+fmri_qc_original = qc.fMRI2QC("carpet_aroma", tag="1_orinal")
+fmri_qc_nonaggr = qc.fMRI2QC("carpet_aroma", tag="2_nonaggressive")
+fmri_qc_aggr = qc.fMRI2QC("carpet_aroma", tag="3_aggressive")
+
+
+# compute mean FD
+meanFD = pe.MapNode(interface=utils_math.Txt2meanTxt,
+                  iterfield=['in_file'],
+                  name='meanFD')
+meanFD.inputs.axis = 0  # global mean
+
+pop_FD = pe.Node(interface=utils_convert.List2TxtFile,
+                     name='pop_FD')  # TODO  sink this
 
 totalWorkflow = nipype.Workflow('exAROMA')
 totalWorkflow.base_dir = '.'
@@ -91,8 +123,9 @@ totalWorkflow.connect([
        ('outputspec.probmap_gm', 'inputspec.anat_gm_segmentation')]),
     (reorient_func, mymc,
      [('out_file', 'inputspec.func')]),
-    (reorient_func, mybet,
-     [('out_file', 'in_file')]),
+    (mymc, mybet,
+     [('outputspec.func_out_file', 'in_file')]),
+    #aroma
     (mymc, scale_glob_4d,
      [('outputspec.func_out_file', 'in_file')]),
     (scale_glob_4d, myaroma,
@@ -105,7 +138,55 @@ totalWorkflow.connect([
     (myanatproc, myaroma,
     [('outputspec.anat2mni_warpfield', 'inputspec.fnirt_warp_file')]),
     (mybet, myaroma,
-     [('mask_file', 'inputspec.mask')])
+     [('mask_file', 'inputspec.mask')]),
+    #func2std
+    (scale_glob_4d, func2std,
+     [('out_file', 'inputspec.func')]),
+    (mybbr, func2std,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
+    (myanatproc, func2std,
+     [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx')]),
+    (myanatproc, func2std,
+     [('outputspec.std_brain', 'inputspec.reference_brain')]),
+
+    (myaroma, func2std_aroma_nonaggr,
+     [('outputspec.nonaggr_denoised_file', 'inputspec.func')]),
+    (mybbr, func2std_aroma_nonaggr,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
+    (myanatproc, func2std_aroma_nonaggr,
+     [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx')]),
+    (myanatproc, func2std_aroma_nonaggr,
+     [('outputspec.std_brain', 'inputspec.reference_brain')]),
+
+    (myaroma, func2std_aroma_aggr,
+     [('outputspec.aggr_denoised_file', 'inputspec.func')]),
+    (mybbr, func2std_aroma_aggr,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
+    (myanatproc, func2std_aroma_aggr,
+     [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx')]),
+    (myanatproc, func2std_aroma_aggr,
+     [('outputspec.std_brain', 'inputspec.reference_brain')]),
+    # calculate FD
+    (mymc, calculate_FD,
+     [('outputspec.mc_par_file', 'in_file')]),
+    # carpet plots!!!
+    (func2std, fmri_qc_original,
+     [('outputspec.func_std', 'inputspec.func')]),
+    (calculate_FD, fmri_qc_original,
+     [('out_file', 'inputspec.confounds')]),
+    (func2std_aroma_nonaggr, fmri_qc_nonaggr,
+     [('outputspec.func_std', 'inputspec.func')]),
+    (calculate_FD, fmri_qc_nonaggr,
+     [('out_file', 'inputspec.confounds')]),
+    (func2std_aroma_aggr, fmri_qc_aggr,
+     [('outputspec.func_std', 'inputspec.func')]),
+    (calculate_FD, fmri_qc_aggr,
+     [('out_file', 'inputspec.confounds')]),
+    # pop-level mean FD
+    (calculate_FD, meanFD,
+     [('out_file', 'in_file')]),
+    (meanFD, pop_FD,
+     [('mean_file', 'in_list')])
     ])
 
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True);

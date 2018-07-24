@@ -4,11 +4,13 @@ import nipype.interfaces.fsl as fsl
 import nipype.interfaces.io as io
 from nipype.interfaces.utility import Function
 import os
+import PUMI.utils.globals as globals
 
 # TODO: its not really .png, its .ppm
-def vol2png(qcname, tag="", SinkDir=".", QCDIR="QC"):
+# HINT: you can try to put various qc images in the same folder by using the tag parameter, like e.g. in IcaAroma.py
+def vol2png(qcname, tag="", overlay=True, overlayiterated=True):
 
-    QCDir = os.path.abspath(SinkDir + "/" + QCDIR)
+    QCDir = os.path.abspath(globals._SinkDir_ + "/" + globals._QCDir_)
     if not os.path.exists(QCDir):
         os.makedirs(QCDir)
 
@@ -19,13 +21,20 @@ def vol2png(qcname, tag="", SinkDir=".", QCDIR="QC"):
                         name='inputspec')
 
     # Create png images for quality check
-    slicer = pe.MapNode(interface=fsl.Slicer(all_axial=True),
+    if overlay & overlayiterated:
+        slicer = pe.MapNode(interface=fsl.Slicer(),
                         iterfield=['in_file', 'image_edges'],
                         name='slicer')
-    slicer.inputs.image_width = 5000
+    else:
+        slicer = pe.MapNode(interface=fsl.Slicer(),
+                            iterfield=['in_file'],
+                            name='slicer')
+
+    slicer.inputs.image_width = 2000
     slicer.inputs.out_file = qcname
     # set output all axial slices into one picture
-    slicer.inputs.all_axial = True
+    slicer.inputs.sample_axial = 5
+    #slicer.inputs.middle_slices = True
 
     # Save outputs which are important
     ds_qc = pe.Node(interface=io.DataSink(),
@@ -34,8 +43,10 @@ def vol2png(qcname, tag="", SinkDir=".", QCDIR="QC"):
     ds_qc.inputs.regexp_substitutions = [("(\/)[^\/]*$", tag + ".ppm")]
 
     analysisflow = pe.Workflow(name=qcname + tag + '_qc')
+
     analysisflow.connect(inputspec, 'bg_image', slicer, 'in_file')
-    analysisflow.connect(inputspec, 'overlay_image', slicer, 'image_edges')
+    if overlay:
+        analysisflow.connect(inputspec, 'overlay_image', slicer, 'image_edges')
     analysisflow.connect(slicer, 'out_file', ds_qc, qcname)
 
     return analysisflow
@@ -57,7 +68,7 @@ def timecourse2png(qcname, tag="", type=TsPlotType.ALL, SinkDir=".", QCDIR="QC")
     import nipype.interfaces.fsl as fsl
     import nipype.interfaces.io as io
 
-    QCDir = os.path.abspath(SinkDir + "/" + QCDIR)
+    QCDir = os.path.abspath(globals._SinkDir_ + "/" + globals._QCDir_)
     if not os.path.exists(QCDir):
         os.makedirs(QCDir)
 
@@ -127,3 +138,47 @@ def timecourse2png(qcname, tag="", type=TsPlotType.ALL, SinkDir=".", QCDIR="QC")
     return analysisflow
 
 
+def fMRI2QC(qcname, tag="", SinkDir=".", QCDIR="QC"):
+    import os
+    import nipype
+    import nipype.pipeline as pe
+    import nipype.interfaces.utility as utility
+    import PUMI.plot.image as plot
+
+    QCDir = os.path.abspath(globals._SinkDir_ + "/" + globals._QCDir_)
+    if not os.path.exists(QCDir):
+        os.makedirs(QCDir)
+
+    if tag:
+        tag = "_" + tag
+
+    # Basic interface class generates identity mappings
+    inputspec = pe.Node(utility.IdentityInterface(fields=['func', 'atlas', 'confounds']),
+                        name='inputspec')
+    inputspec.inputs.atlas = globals._FSLDIR_ + '/data/atlases/HarvardOxford/HarvardOxford-cort-maxprob-thr25-2mm.nii.gz'
+
+
+    plotfmri = pe.MapNode(interface=Function(input_names=['func', 'atlaslabels', 'confounds', 'output_file'],
+                                                  output_names=['plotfile'],
+                                                  function=plot.plot_fmri_qc),
+                               iterfield=['func', 'confounds'],
+                               name="qc_fmri_orig")
+    plotfmri.inputs.output_file = "qc_fmri.png"
+    # default atlas works only for standardized, 2mm-resoultion data
+
+    # Save outputs which are important
+    ds_qc = pe.Node(interface=io.DataSink(),
+                    name='ds_qc')
+    ds_qc.inputs.base_directory = QCDir
+    ds_qc.inputs.regexp_substitutions = [("(\/)[^\/]*$", tag + ".png")]
+
+    # Create a workflow
+    analysisflow = nipype.Workflow(name=qcname + tag + '_qc')
+
+    analysisflow.connect(inputspec, 'func', plotfmri, 'func')
+    analysisflow.connect(inputspec, 'atlas', plotfmri, 'atlaslabels')
+    analysisflow.connect(inputspec, 'confounds', plotfmri, 'confounds')
+
+    analysisflow.connect(plotfmri, 'plotfile', ds_qc, qcname)
+
+    return analysisflow
