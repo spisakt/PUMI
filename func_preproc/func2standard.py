@@ -1,22 +1,21 @@
-def func2mni(wf_name='func2mni', SinkTag="func_preproc"):
+def func2mni(carpet_plot=None, wf_name='func2mni', SinkTag="func_preproc"):
 
     """
-    Modified version of CPAC.registration.registration:
+    Transaform 4D functional image to MNI space.
 
-    `source: https://fcp-indi.github.io/docs/developer/_modules/CPAC/registration/registration.html`
-
-
-    Register skull and brain extracted image to MNI space and return the transformation martices.
+    carpet_plot: string specifying the tag parameter for carpet plot of the standardized MRI measurement
+            (default is None: no carpet plot)
+            if not None, inputs atlaslabels and confounds should be defined (it might work with defaults, though)
 
     Workflow inputs:
-        :param skull: The reoriented anatomical file.
-        :param brain: The brain extracted anat.
-        :param ref_skull: MNI152 skull file.
-        :param ref_brain: MNI152 brain file.
-        :param ref_mask: CSF mask of the MNI152 file.
-        :param fnirt config: Parameters which specifies FNIRT options.
-        :param SinkDir:
-        :param SinkTag: The output directiry in which the returned images (see workflow outputs) could be found.
+    :param func
+    :param linear_reg_mtrx
+    :param nonlinear_reg_mtrx
+    :param reference_brain
+    :param atlas (optional)
+    :param confounds (optional)
+    :param confound_names (optional)
+
 
     Workflow outputs:
 
@@ -50,9 +49,17 @@ def func2mni(wf_name='func2mni', SinkTag="func_preproc"):
     inputspec=pe.Node(utility.IdentityInterface(fields=['func',
                                                         'linear_reg_mtrx',
                                                         'nonlinear_reg_mtrx',
-                                                        'reference_brain']),
+                                                        'reference_brain',
+                                                        'atlas',
+                                                        'confounds',
+                                                        'confound_names']),
                                                 name='inputspec')
+
+    inputspec.inputs.atlas = globals._FSLDIR_ + '/data/atlases/HarvardOxford/HarvardOxford-cort-maxprob-thr25-2mm.nii.gz'
+
     inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
+    # TODO: does not work with the iterfiled definition for ref_file below:
+    # TODO: it should be sepcified in a function argument, whether it shopuld be iterated
 
     # apply transformation marticis
     applywarp = pe.MapNode(interface=fsl.ApplyWarp(),
@@ -60,6 +67,9 @@ def func2mni(wf_name='func2mni', SinkTag="func_preproc"):
                          name='applywarp')
 
     myqc = qc.vol2png("func2mni", "FSL")
+
+    if carpet_plot:
+        fmri_qc = qc.fMRI2QC("carpet_plots", tag=carpet_plot)
 
     outputspec = pe.Node(utility.IdentityInterface(fields=['func_std']),
                          name='outputspec')
@@ -74,5 +84,10 @@ def func2mni(wf_name='func2mni', SinkTag="func_preproc"):
 
     analysisflow.connect(applywarp, 'out_file', myqc, 'inputspec.bg_image')
     analysisflow.connect(inputspec, 'reference_brain', myqc, 'inputspec.overlay_image')
+
+    if carpet_plot:
+        analysisflow.connect(applywarp, 'out_file', fmri_qc, 'inputspec.func')
+        analysisflow.connect(inputspec, 'atlas', fmri_qc, 'inputspec.atlas')
+        analysisflow.connect(inputspec, 'confounds', fmri_qc, 'inputspec.confounds')
 
     return analysisflow

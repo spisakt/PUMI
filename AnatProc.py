@@ -100,10 +100,10 @@ def AnatProc(stdreg=RegType.FSL, SinkTag="anat_preproc", wf_name="anatproc"):
         (inputspec, myanat2mni,
          [('anat', 'inputspec.skull')]),
         (mybet, outputspec,
-         [('outputspec.skull', 'skull'),
-          ('outputspec.brain', 'brain'),
+         [('outputspec.brain', 'brain'),
           ('outputspec.brain_mask', 'brain_mask')]),
-
+        (inputspec, outputspec,
+         [('anat', 'skull')]),
         (myfast, outputspec,
          [('outputspec.partial_volume_map', 'parvol_map'),
           ('outputspec.probmap_csf', 'probmap_csf'),

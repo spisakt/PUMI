@@ -1,3 +1,46 @@
+def calculate_FD_P(in_file):
+    """
+
+    Method to calculate Framewise Displacement (FD) calculations
+    (Power et al., 2012)
+
+    Parameters
+    ----------
+    in_file : string
+        movement parameters vector file path
+
+    Returns
+    -------
+    out_file : string
+        Frame-wise displacement mat
+        file path
+
+    Comment by BK:
+    Framewise displacement shows relative head motion as a scalar. The absolute values of relative translational and rotational (derived from a spere of radius 50mm) parameters are added.
+    The higher the valu the larger the displacement.
+    """
+
+    import os
+    import numpy as np
+
+    out_file = os.path.join(os.getcwd(), 'FD.1D')
+
+    lines = open(in_file, 'r').readlines()
+    rows = [[float(x) for x in line.split()] for line in lines]
+    cols = np.array([list(col) for col in zip(*rows)])
+
+    translations = np.transpose(np.abs(np.diff(cols[3:6, :])))
+    rotations = np.transpose(np.abs(np.diff(cols[0:3, :])))
+
+    FD_power = np.sum(translations, axis=1) + (50 * 3.141 / 180) * np.sum(rotations, axis=1)
+
+    # FD is zero for the first time point
+    FD_power = np.insert(FD_power, 0, 0)
+
+    np.savetxt(out_file, FD_power)
+
+    return out_file
+
 def mc_workflow(SinkTag = "func_preproc",
                 wf_name="motion_correction"):
 
@@ -88,6 +131,13 @@ def mc_workflow(SinkTag = "func_preproc",
                               iterfield=['in_file'],
                               name='calc_friston')
 
+    # Calculate FD based on Power's method
+    calculate_FD = pe.MapNode(utility.Function(input_names=['in_file'],
+                                               output_names=['out_file'],
+                                               function=calculate_FD_P),
+                              iterfield=['in_file'],
+                              name='calculate_FD')
+
     plot_motion_rot = pe.MapNode(
         interface=fsl.PlotMotionParams(in_source='fsl'),
         name='plot_motion_rot',
@@ -105,7 +155,8 @@ def mc_workflow(SinkTag = "func_preproc",
     outputspec = pe.Node(utility.IdentityInterface(fields=['func_out_file',
                                                            'first24_file',
                                                            'mat_file',
-                                                           'mc_par_file']),
+                                                           'mc_par_file',
+                                                           'FD_file']),
                          name='outputspec')
 
     # save data out with Datasink
@@ -119,10 +170,17 @@ def mc_workflow(SinkTag = "func_preproc",
     ds_text.inputs.base_directory = SinkDir
 
     # Save outputs which are important
-    ds_qc = pe.Node(interface=io.DataSink(),
-                  name='ds_qc')
-    ds_qc.inputs.base_directory = QCDir
-    ds_qc.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".png")]
+    ds_qc_rot = pe.Node(interface=io.DataSink(),
+                  name='ds_qc_rot')
+    ds_qc_rot.inputs.base_directory = QCDir
+    ds_qc_rot.inputs.regexp_substitutions = [("(\/)[^\/]*$", "_rot.png")]
+
+    # Save outputs which are important
+    ds_qc_tra = pe.Node(interface=io.DataSink(),
+                    name='ds_qc_tra')
+    ds_qc_tra.inputs.base_directory = QCDir
+    ds_qc_tra.inputs.regexp_substitutions = [("(\/)[^\/]*$", "_trans.png")]
+
 
     #TODO set the proper images which has to be saved in a the datasink specified directory
     # Create a workflow to connect all those nodes
@@ -131,6 +189,8 @@ def mc_workflow(SinkTag = "func_preproc",
     analysisflow.connect(inputspec, 'func', lastvolnum, 'in_files')
     analysisflow.connect(lastvolnum, 'lastvolidx', mcflirt, 'ref_vol')
     analysisflow.connect(mcflirt, 'par_file', calc_friston, 'in_file')
+    analysisflow.connect(mcflirt, 'par_file', calculate_FD, 'in_file')
+
     analysisflow.connect(mcflirt, 'out_file', outputspec, 'func_out_file')
     analysisflow.connect(mcflirt, 'mat_file', outputspec, 'mat_file')
     analysisflow.connect(mcflirt, 'par_file', outputspec, 'mc_par_file')
@@ -141,10 +201,11 @@ def mc_workflow(SinkTag = "func_preproc",
     #analysisflow.connect(mcflirt, 'variance_img', ds, 'mc.@variance_img')
     analysisflow.connect(calc_friston, 'out_file', outputspec, 'first24_file')
     analysisflow.connect(calc_friston, 'out_file', ds_text, 'mc_first24')
+    analysisflow.connect(calculate_FD, 'out_file', outputspec, 'FD_file')
     analysisflow.connect(mcflirt, 'par_file', plot_motion_rot, 'in_file')
     analysisflow.connect(mcflirt, 'par_file', plot_motion_tra, 'in_file')
-    analysisflow.connect(plot_motion_rot, 'out_file', ds_qc, 'mc_rot')
-    analysisflow.connect(plot_motion_tra, 'out_file', ds_qc, 'mc_trans')
+    analysisflow.connect(plot_motion_rot, 'out_file', ds_qc_rot, 'motion_correction')
+    analysisflow.connect(plot_motion_tra, 'out_file', ds_qc_tra, 'motion_correction')
     analysisflow.connect(mcflirt, 'out_file', myqc, 'inputspec.func')
 
     return analysisflow

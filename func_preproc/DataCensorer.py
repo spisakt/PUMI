@@ -65,16 +65,10 @@ def datacens_workflow(SinkTag="func_preproc", wf_name="data_censoring"):
 
     # Identitiy mapping for input variables
     inputspec = pe.Node(utility.IdentityInterface(fields=['func',
-                                                          'movement_parameters',
-                                                          'threshold']),
+                                                          'FD',
+                                                          'threshold',]),
                         name='inputspec')
     inputspec.inputs.threshold = 5
-    # Calculate FD based on Power's method
-    calculate_FD = pe.MapNode(utility.Function(input_names=['in_file'],
-                                         output_names=['out_file'],
-                                         function=calculate_FD_P),
-                              iterfield=['in_file'],
-                           name='calculate_FD')
 
     #TODO check CPAC.generate_motion_statistics.generate_motion_statistics script. It may use the FD of Jenkinson to index volumes which violate the upper threhold limit, no matter what we set.
     # Determine the indices of the upper part (which is defined by the threshold, deafult 5%) of values based on their FD values
@@ -101,7 +95,7 @@ def datacens_workflow(SinkTag="func_preproc", wf_name="data_censoring"):
 
     myqc = qc.timecourse2png("timeseries", tag="040_censored")
 
-    outputspec = pe.Node(utility.IdentityInterface(fields=['scrubbed_image']),
+    outputspec = pe.Node(utility.IdentityInterface(fields=['scrubbed_image', 'FD']),
                          name='outputspec')
 
     # save data out with Datasink
@@ -114,10 +108,8 @@ def datacens_workflow(SinkTag="func_preproc", wf_name="data_censoring"):
     # Create workflow
     analysisflow = pe.Workflow(wf_name)
     ###Calculating mean Framewise Displacement (FD) as Power et al., 2012
-    analysisflow.connect(inputspec, 'movement_parameters', calculate_FD, 'in_file')
-    analysisflow.connect(calculate_FD, 'out_file', outputspec, 'FD_1D')
     # Calculating frames to exclude and include after scrubbing
-    analysisflow.connect(calculate_FD, 'out_file', calc_upprperc, 'in_file')
+    analysisflow.connect(inputspec, 'FD', calc_upprperc, 'in_file')
     analysisflow.connect(inputspec, 'threshold', calc_upprperc, 'threshold')
     # Create the proper format for the scrubbing procedure
     analysisflow.connect(calc_upprperc, 'frames_in_idx', craft_scrub_input, 'frames_in_1D_file')
@@ -126,6 +118,7 @@ def datacens_workflow(SinkTag="func_preproc", wf_name="data_censoring"):
     analysisflow.connect(craft_scrub_input, 'scrub_input_string', scrubbed_preprocessed, 'scrub_input')
     # Output
     analysisflow.connect(scrubbed_preprocessed, 'scrubbed_image', outputspec, 'scrubbed_image')
+    analysisflow.connect(inputspec, 'FD', outputspec, 'FD')
     # Save a few files
     #analysisflow.connect(scrubbed_preprocessed, 'scrubbed_image', ds, 'scrubbed_image')
     #analysisflow.connect(calc_upprperc, 'percentFD', ds, 'scrubbed_image.@numberofvols')
@@ -135,49 +128,6 @@ def datacens_workflow(SinkTag="func_preproc", wf_name="data_censoring"):
     return analysisflow
 
 
-def calculate_FD_P(in_file):
-    """
-
-    Method to calculate Framewise Displacement (FD) calculations
-    (Power et al., 2012)
-
-    Parameters
-    ----------
-    in_file : string
-        movement parameters vector file path
-
-    Returns
-    -------
-    out_file : string
-        Frame-wise displacement mat
-        file path
-
-    Comment by BK:
-    Framewise displacement shows relative head motion as a scalar. The absolute values of relative translational and rotational (derived from a spere of radius 50mm) parameters are added.
-    The higher the valu the larger the displacement.
-    """
-
-    import os
-    import numpy as np
-
-    out_file = os.path.join(os.getcwd(), 'FD.1D')
-
-    lines = open(in_file, 'r').readlines()
-    rows = [[float(x) for x in line.split()] for line in lines]
-    cols = np.array([list(col) for col in zip(*rows)])
-
-    translations = np.transpose(np.abs(np.diff(cols[3:6, :])))
-    rotations = np.transpose(np.abs(np.diff(cols[0:3, :])))
-
-    FD_power = np.sum(translations, axis=1) + (50 * 3.141 / 180) * np.sum(rotations, axis=1)
-
-    # FD is zero for the first time point
-    FD_power = np.insert(FD_power, 0, 0)
-
-    np.savetxt(out_file, FD_power)
-
-    return out_file
-
 def calculate_upperpercent(in_file,threshold):
     import os
     import numpy as np
@@ -185,23 +135,22 @@ def calculate_upperpercent(in_file,threshold):
     # Receives the FD file to calculate the upper percent of violating volumes
     powersFD_data = loadtxt(in_file)
     powersFD_data[0] = 0
-    sortedpwrsFDdata=sorted(powersFD_data)
-    limitvalueindex=int(len(sortedpwrsFDdata) * threshold / 100)
-    limitvalue=sortedpwrsFDdata[len(sortedpwrsFDdata) - limitvalueindex]
-    frames_in_idx = np.argwhere(powersFD_data < limitvalue)
+    sortedpwrsFDdata = sorted(powersFD_data)
+    limitvalueindex = int(len(sortedpwrsFDdata) * threshold / 100)
+    limitvalue = sortedpwrsFDdata[len(sortedpwrsFDdata) - limitvalueindex]
+    frames_in_idx = np.argwhere(powersFD_data < limitvalue)[:,0]
     frames_in_idx_str = ','.join(str(x) for x in frames_in_idx)
-    frames_in_idx=frames_in_idx_str.split()
+    frames_in_idx = frames_in_idx_str.split()
 
     count = np.float(powersFD_data[powersFD_data > limitvalue].size)
     percentFD = (count * 100 / (len(powersFD_data) + 1))
 
     out_file = os.path.join(os.getcwd(), 'numberofcensoredvolumes.txt')
-    print
     f = open(out_file, 'w')
     f.write("%.3f," % (percentFD))
     f.close()
 
-    return frames_in_idx_str, percentFD
+    return frames_in_idx, percentFD
 
 def get_indx(scrub_input, frames_in_1D_file):
     """
@@ -224,8 +173,7 @@ def get_indx(scrub_input, frames_in_1D_file):
     #f = open(frames_in_1D_file, 'r')
     #line = f.readline()
     #line = line.strip(',')
-
-    line=frames_in_1D_file
+    frames_in_idx_str = '[' + ','.join(str(x) for x in frames_in_1D_file) + ']'
     #if line:
     #    indx = map(int, line.split(","))
     #else:
@@ -233,7 +181,7 @@ def get_indx(scrub_input, frames_in_1D_file):
     #f.close()
 
     #scrub_input_string = scrub_input + str(indx).replace(" ", "")
-    scrub_input_string = scrub_input + line
+    scrub_input_string = scrub_input + frames_in_idx_str
     return scrub_input_string
 
 def scrub_image(scrub_input):

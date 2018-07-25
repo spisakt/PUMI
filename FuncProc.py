@@ -3,7 +3,6 @@ import nipype
 import nipype.pipeline as pe
 # import the defined workflow from the func_preproc folder
 import PUMI.utils.Concat as conc
-import PUMI.func_preproc.Onevol as onevol
 import PUMI.func_preproc.MotionCorrecter as mc
 import PUMI.func_preproc.Compcor as cmpcor
 import PUMI.func_preproc.NuissanceCorr as nuisscorr
@@ -53,15 +52,20 @@ def FuncProc(SinkTag="func_preproc", wf_name="funcproc"):
     mycmpcor = cmpcor.compcor_workflow()
     myconc = conc.concat_workflow(numconcat=2)
     mynuisscor = nuisscorr.nuissremov_workflow()
-    mytmpfilt = tmpfilt.tmpfilt_workflow()
+    mytmpfilt = tmpfilt.tmpfilt_workflow(highpass_Hz=0.008, lowpass_Hz=0.08)
     mycens = cens.datacens_workflow()
     mymedangcor = medangcor.mac_workflow()
 
     # Basic interface class generates identity mappings
-    outputspec = pe.Node(utility.IdentityInterface(fields=['mc_func']),
+    outputspec = pe.Node(utility.IdentityInterface(fields=['func_mc',
+                                                           'func_mc_nuis',
+                                                           'func_mc_nuis_bpf',
+                                                           'func_mc_nuis_bpf_cens',
+                                                           'func_mc_nuis_bpf_cens_medang',
+                                                            # non-image data
+                                                           'FD'
+                                                           ]),
                          name='outputspec')
-
-
     wf_mc = nipype.Workflow(wf_name)
 
     wf_mc.connect([
@@ -75,9 +79,16 @@ def FuncProc(SinkTag="func_preproc", wf_name="funcproc"):
         (mymc, mynuisscor, [('outputspec.func_out_file', 'inputspec.in_file')]),
         (mynuisscor,mytmpfilt,[('outputspec.out_file','inputspec.func')]),
         (mytmpfilt,mycens,[('outputspec.func_tmplfilt','inputspec.func')]),
-        (mymc,mycens,[('outputspec.mc_par_file','inputspec.movement_parameters')]),
+        (mymc,mycens,[('outputspec.FD_file','inputspec.FD')]),
         (mycens, mymedangcor, [('outputspec.scrubbed_image', 'inputspec.realigned_file')]),
-                   #(mymedangcor, myfunc2struc, [('outputspec.final_func', 'inputspec.in_file')])
+        # outputspec
+        (mymc, outputspec, [('outputspec.func_out_file', 'func_mc')]),
+        (mynuisscor, outputspec, [('outputspec.out_file', 'func_mc_nuis')]),
+        (mytmpfilt, outputspec, [('outputspec.func_tmplfilt', 'func_mc_nuis_bpf')]),
+        (mycens, outputspec, [('outputspec.scrubbed_image', 'func_mc_nuis_bpf_cens')]),
+        (mymedangcor, outputspec, [('outputspec.final_func', 'func_mc_nuis_bpf_cens_medang')]),
+        # non-image data:
+        (mycens, outputspec, [('outputspec.FD', 'FD')])
                    ])
 
     return wf_mc

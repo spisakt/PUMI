@@ -7,10 +7,12 @@ import nipype.pipeline as pe
 # import the defined workflows from the anat_preproc folder
 import nipype.interfaces.io as nio
 import nipype.interfaces.fsl as fsl
+import nipype.interfaces.afni as afni
 import PUMI.AnatProc as anatproc
 import PUMI.FuncProc as funcproc
 # import the necessary workflows from the func_preproc folder
 import PUMI.anat_preproc.Func2Anat as bbr
+import PUMI.func_preproc.func2standard as transform
 import os
 import PUMI.utils.globals as globals
 #import PUMI.utils.addimages as adding
@@ -57,6 +59,20 @@ def pickindex(vec, i):
 
 myfuncproc = funcproc.FuncProc()
 
+#create atlas matching this space
+resample_atlas = pe.Node(interface=afni.Resample(outputtype = 'NIFTI_GZ',
+                                          in_file="/Users/tspisak/data/atlases/MIST/Parcellations/MIST_7.nii.gz",
+                                          master=globals._FSLDIR_ + '/data/atlases/HarvardOxford/HarvardOxford-cort-maxprob-thr25-2mm.nii.gz'),
+                         name='resample_atlas') #default interpolation is nearest neighbour
+
+# standardize what you need
+myfunc2mni = transform.func2mni(carpet_plot="1_original", wf_name="func2mni")
+myfunc2mni_cc = transform.func2mni(carpet_plot="2_cc", wf_name="func2mni_cc")
+myfunc2mni_cc_bpf = transform.func2mni(carpet_plot="3_cc_bpf", wf_name="func2mni_cc_bpf")
+myfunc2mni_cc_bpf_cens = transform.func2mni(carpet_plot="4_cc_bpf_cens", wf_name="func2mni_cc_bpf_cens")
+myfunc2mni_cc_bpf_cens_mac = transform.func2mni(carpet_plot="5_cc_bpf_cens_mac", wf_name="func2mni_cc_bpf_cens_mac")
+
+
 totalWorkflow = nipype.Workflow('totalWorkflow')
 totalWorkflow.base_dir = '.'
 
@@ -80,16 +96,75 @@ totalWorkflow.connect([
     ])
 
 # functional part
-"""totalWorkflow.connect([
+totalWorkflow.connect([
     (reorient_func, myfuncproc,
      [('out_file', 'inputspec.func')]),
-    (mybbr,add_masks,
+    (mybbr, add_masks,
      [('outputspec.csf_mask_in_funcspace','in_file'),
       ('outputspec.wm_mask_in_funcspace','in_file2')]),
-    (add_masks,myfuncproc,
-     [('out_file','inputspec.cc_noise_roi')])
+    (add_masks, myfuncproc,
+     [('out_file','inputspec.cc_noise_roi')]),
+
+
+    # push func to standard space
+    (myfuncproc, myfunc2mni,
+     [('outputspec.func_mc', 'inputspec.func'),
+      ('outputspec.FD', 'inputspec.confounds')]),
+    (mybbr, myfunc2mni,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
+    (myanatproc, myfunc2mni,
+     [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
+      ('outputspec.std_brain', 'inputspec.reference_brain')]),
+    (resample_atlas, myfunc2mni,
+     [('out_file', 'inputspec.atlas')]),
+
+    (myfuncproc, myfunc2mni_cc,
+     [('outputspec.func_mc_nuis', 'inputspec.func'),
+      ('outputspec.FD', 'inputspec.confounds')]),
+    (mybbr, myfunc2mni_cc,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
+    (myanatproc, myfunc2mni_cc,
+     [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
+      ('outputspec.std_brain', 'inputspec.reference_brain')]),
+    (resample_atlas, myfunc2mni_cc,
+     [('out_file', 'inputspec.atlas')]),
+
+    (myfuncproc, myfunc2mni_cc_bpf,
+     [('outputspec.func_mc_nuis_bpf', 'inputspec.func'),
+      ('outputspec.FD', 'inputspec.confounds')]),
+    (mybbr, myfunc2mni_cc_bpf,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
+    (myanatproc, myfunc2mni_cc_bpf,
+     [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
+      ('outputspec.std_brain', 'inputspec.reference_brain')]),
+    (resample_atlas, myfunc2mni_cc_bpf,
+     [('out_file', 'inputspec.atlas')]),
+
+    (myfuncproc, myfunc2mni_cc_bpf_cens,
+     [('outputspec.func_mc_nuis_bpf_cens', 'inputspec.func'),
+      ('outputspec.FD', 'inputspec.confounds')]),
+    (mybbr, myfunc2mni_cc_bpf_cens,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
+    (myanatproc, myfunc2mni_cc_bpf_cens,
+     [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
+      ('outputspec.std_brain', 'inputspec.reference_brain')]),
+    (resample_atlas, myfunc2mni_cc_bpf_cens,
+     [('out_file', 'inputspec.atlas')]),
+
+(myfuncproc, myfunc2mni_cc_bpf_cens_mac,
+     [('outputspec.func_mc_nuis_bpf_cens_medang', 'inputspec.func'),
+      ('outputspec.FD', 'inputspec.confounds')]),
+    (mybbr, myfunc2mni_cc_bpf_cens_mac,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
+    (myanatproc, myfunc2mni_cc_bpf_cens_mac,
+     [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
+      ('outputspec.std_brain', 'inputspec.reference_brain')]),
+    (resample_atlas, myfunc2mni_cc_bpf_cens_mac,
+     [('out_file', 'inputspec.atlas')]),
+
+
     ])
-    """
+
 
 
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)

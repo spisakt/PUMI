@@ -93,7 +93,7 @@ def anat2mni_fsl_workflow(SinkTag="anat_preproc", wf_name="anat2mni_fsl"):
     # Create png images for quality check
     myqc = qc.vol2png("anat2mni", "FSL", overlayiterated=False)
     myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
-    myqc.inputs.slicer.image_width = 5000
+    myqc.inputs.slicer.image_width = 500
     myqc.inputs.slicer.threshold_edges = 0.12
 
     # Save outputs which are important
