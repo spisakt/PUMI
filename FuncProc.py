@@ -3,6 +3,7 @@ import nipype
 import nipype.pipeline as pe
 # import the defined workflow from the func_preproc folder
 import PUMI.utils.Concat as conc
+import PUMI.anat_preproc.Better as bet
 import PUMI.func_preproc.MotionCorrecter as mc
 import PUMI.func_preproc.Compcor as cmpcor
 import PUMI.func_preproc.NuissanceCorr as nuisscorr
@@ -48,6 +49,7 @@ def FuncProc(SinkTag="func_preproc", wf_name="funcproc"):
 
     # build the actual pipeline
     #myonevol = onevol.onevol_workflow(SinkDir=SinkDir)
+    mybet = bet.bet_workflow(SinkTag="func_preproc", fmri=True, wf_name="brain_extraction_func")
     mymc = mc.mc_workflow()
     mycmpcor = cmpcor.compcor_workflow()
     myconc = conc.concat_workflow(numconcat=2)
@@ -69,8 +71,10 @@ def FuncProc(SinkTag="func_preproc", wf_name="funcproc"):
     wf_mc = nipype.Workflow(wf_name)
 
     wf_mc.connect([
-        (inputspec, mymc,
-         [('func', 'inputspec.func')]),
+        (inputspec, mybet,
+         [('func', 'inputspec.in_file')]),
+        (mybet, mymc,
+         [('outputspec.brain', 'inputspec.func')]),
         (mymc, mycmpcor, [('outputspec.func_out_file', 'inputspec.func_aligned')]),
         (inputspec, mycmpcor, [('cc_noise_roi', 'inputspec.mask_file')]),
         (mycmpcor,myconc, [('outputspec.components_file','inputspec.par1')]),

@@ -13,6 +13,7 @@ import PUMI.FuncProc as funcproc
 # import the necessary workflows from the func_preproc folder
 import PUMI.anat_preproc.Func2Anat as bbr
 import PUMI.func_preproc.func2standard as transform
+import PUMI.utils.utils_convert as utils_convert
 import os
 import PUMI.utils.globals as globals
 #import PUMI.utils.addimages as adding
@@ -29,6 +30,11 @@ if (len(sys.argv) <= 2):
 if (len(sys.argv) > 3):
     globals._SinkDir_ = sys.argv[3]
 
+##############################
+#_regtype_ = globals._RegType_.FSL
+_regtype_ = globals._RegType_.ANTS
+##############################
+
 # create data grabber
 datagrab = pe.Node(nio.DataGrabber(outfields=['func', 'struct']), name='data_grabber')
 
@@ -37,6 +43,17 @@ datagrab.inputs.template = "*"  # do we need this?
 datagrab.inputs.field_template = dict(func=sys.argv[2],
                                       struct=sys.argv[1])  # specified by command line arguments
 datagrab.inputs.sort_filelist = True
+
+# sink: file - idx relationship!!
+pop_id = pe.Node(interface=utils_convert.List2TxtFile,
+                     name='pop_id')
+pop_id.inputs.rownum = 0
+pop_id.inputs.out_file = "subject_IDs.txt"
+pop_id.inputs.filelist = False
+ds_id = pe.Node(interface=nio.DataSink(), name='ds_pop_id')
+ds_id.inputs.regexp_substitutions = [("(\/)[^\/]*$", "IDs.txt")]
+ds_id.inputs.base_directory = globals._SinkDir_
+
 # build the actual pipeline
 reorient_struct = pe.MapNode(fsl.utils.Reorient2Std(),
                       iterfield=['in_file'],
@@ -45,7 +62,7 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
                       iterfield=['in_file'],
                       name="reorient_func")
 
-myanatproc = anatproc.AnatProc(stdreg=anatproc.RegType.FSL)
+myanatproc = anatproc.AnatProc(stdreg=_regtype_)
 
 mybbr = bbr.bbr_workflow()
 # Add arbitrary number of nii images wthin the same space. The default is to add csf and wm masks for anatcompcor calculation.
@@ -53,6 +70,12 @@ mybbr = bbr.bbr_workflow()
 add_masks = pe.MapNode(fsl.ImageMaths(op_string=' -add'),
                        iterfield=['in_file', 'in_file2'],
                        name="addimgs")
+
+# TODO: erode compcor noise mask!!!!
+erode_mask = pe.MapNode(fsl.ErodeImage(),
+                        iterfield=['in_file'],
+                        name="erode_compcor_mask")
+# TODO: add skull voxels??
 
 def pickindex(vec, i):
     return [x[i] for x in vec]
@@ -66,11 +89,11 @@ resample_atlas = pe.Node(interface=afni.Resample(outputtype = 'NIFTI_GZ',
                          name='resample_atlas') #default interpolation is nearest neighbour
 
 # standardize what you need
-myfunc2mni = transform.func2mni(carpet_plot="1_original", wf_name="func2mni")
-myfunc2mni_cc = transform.func2mni(carpet_plot="2_cc", wf_name="func2mni_cc")
-myfunc2mni_cc_bpf = transform.func2mni(carpet_plot="3_cc_bpf", wf_name="func2mni_cc_bpf")
-myfunc2mni_cc_bpf_cens = transform.func2mni(carpet_plot="4_cc_bpf_cens", wf_name="func2mni_cc_bpf_cens")
-myfunc2mni_cc_bpf_cens_mac = transform.func2mni(carpet_plot="5_cc_bpf_cens_mac", wf_name="func2mni_cc_bpf_cens_mac")
+myfunc2mni = transform.func2mni(stdreg=_regtype_, carpet_plot="1_original", wf_name="func2mni")
+myfunc2mni_cc = transform.func2mni(stdreg=_regtype_, carpet_plot="2_cc", wf_name="func2mni_cc")
+myfunc2mni_cc_bpf = transform.func2mni(stdreg=_regtype_, carpet_plot="3_cc_bpf", wf_name="func2mni_cc_bpf")
+myfunc2mni_cc_bpf_cens = transform.func2mni(stdreg=_regtype_, carpet_plot="4_cc_bpf_cens", wf_name="func2mni_cc_bpf_cens")
+myfunc2mni_cc_bpf_cens_mac = transform.func2mni(stdreg=_regtype_, carpet_plot="5_cc_bpf_cens_mac", wf_name="func2mni_cc_bpf_cens_mac")
 
 
 totalWorkflow = nipype.Workflow('totalWorkflow')
@@ -78,6 +101,10 @@ totalWorkflow.base_dir = '.'
 
 # anatomical part and func2anat
 totalWorkflow.connect([
+    (datagrab, pop_id,
+     [('func', 'in_list')]),
+    (pop_id, ds_id,
+     [('txt_file', 'subjects')]),
     (datagrab, reorient_struct,
      [('struct', 'in_file')]),
     (reorient_struct, myanatproc,
@@ -91,7 +118,8 @@ totalWorkflow.connect([
     (myanatproc, mybbr,
       [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
        ('outputspec.probmap_csf', 'inputspec.anat_csf_segmentation'),
-       ('outputspec.probmap_gm', 'inputspec.anat_gm_segmentation')])
+       ('outputspec.probmap_gm', 'inputspec.anat_gm_segmentation'),
+       ('outputspec.probmap_ventricle', 'inputspec.anat_ventricle_segmentation')])
 
     ])
 
@@ -100,9 +128,11 @@ totalWorkflow.connect([
     (reorient_func, myfuncproc,
      [('out_file', 'inputspec.func')]),
     (mybbr, add_masks,
-     [('outputspec.csf_mask_in_funcspace','in_file'),
+     [('outputspec.ventricle_mask_in_funcspace','in_file'),
       ('outputspec.wm_mask_in_funcspace','in_file2')]),
-    (add_masks, myfuncproc,
+    (add_masks, erode_mask,
+     [('out_file','in_file')]),
+    (erode_mask, myfuncproc,
      [('out_file','inputspec.cc_noise_roi')]),
 
 
@@ -114,7 +144,7 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_brain', 'inputspec.reference_brain')]),
+      ('outputspec.std_template', 'inputspec.reference_brain')]),
     (resample_atlas, myfunc2mni,
      [('out_file', 'inputspec.atlas')]),
 
@@ -125,7 +155,7 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni_cc,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_brain', 'inputspec.reference_brain')]),
+      ('outputspec.std_template', 'inputspec.reference_brain')]),
     (resample_atlas, myfunc2mni_cc,
      [('out_file', 'inputspec.atlas')]),
 
@@ -136,7 +166,7 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni_cc_bpf,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_brain', 'inputspec.reference_brain')]),
+      ('outputspec.std_template', 'inputspec.reference_brain')]),
     (resample_atlas, myfunc2mni_cc_bpf,
      [('out_file', 'inputspec.atlas')]),
 
@@ -147,7 +177,7 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni_cc_bpf_cens,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_brain', 'inputspec.reference_brain')]),
+      ('outputspec.std_template', 'inputspec.reference_brain')]),
     (resample_atlas, myfunc2mni_cc_bpf_cens,
      [('out_file', 'inputspec.atlas')]),
 
@@ -158,7 +188,7 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni_cc_bpf_cens_mac,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_brain', 'inputspec.reference_brain')]),
+      ('outputspec.std_template', 'inputspec.reference_brain')]),
     (resample_atlas, myfunc2mni_cc_bpf_cens_mac,
      [('out_file', 'inputspec.atlas')]),
 

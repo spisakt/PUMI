@@ -87,6 +87,8 @@ def mc_workflow(SinkTag = "func_preproc",
     import nipype.interfaces.fsl as fsl
     import PUMI.func_preproc.info.info_get as info_get
     import nipype.interfaces.io as io
+    import PUMI.utils.utils_math as utils_math
+    import PUMI.utils.utils_convert as utils_convert
     import PUMI.utils.globals as globals
     import PUMI.utils.QC as qc
 
@@ -107,15 +109,19 @@ def mc_workflow(SinkTag = "func_preproc",
     inputspec.inputs.save_plots = True
     inputspec.inputs.stats_imgs = True
 
+    # currently aligned to middle volume (default)
+    # todo: make parametrizable
     # add the number of volumes in the functional data
-    lastvolnum = pe.MapNode(interface=info_get.tMinMax,
-                            iterfield=['in_files'],
-                            name='lastvolnum')
+    #lastvolnum = pe.MapNode(interface=info_get.tMinMax,
+    #                        iterfield=['in_files'],
+    #                        name='lastvolnum')
 
     # Wraps command **mcflirt**
-    mcflirt = pe.MapNode(interface=fsl.MCFLIRT(),
-                         iterfield=['in_file', 'ref_vol'],
+    mcflirt = pe.MapNode(interface=fsl.MCFLIRT(interpolation="spline", stages=4),
+                         iterfield=['in_file'], # , 'ref_vol'], # make parametrizable
                          name='mcflirt')
+    #TODO set refernec volume number
+
     mcflirt.inputs.dof = 6
     mcflirt.inputs.save_mats = True
     mcflirt.inputs.save_plots = True
@@ -137,6 +143,20 @@ def mc_workflow(SinkTag = "func_preproc",
                                                function=calculate_FD_P),
                               iterfield=['in_file'],
                               name='calculate_FD')
+
+    # compute mean FD
+    meanFD = pe.MapNode(interface=utils_math.Txt2meanTxt,
+                        iterfield=['in_file'],
+                        name='meanFD')
+    meanFD.inputs.axis = 0  # global mean
+
+    pop_FD = pe.Node(interface=utils_convert.List2TxtFile,
+                     name='pop_FD')
+
+    # save data out with Datasink
+    ds_fd = pe.Node(interface=io.DataSink(), name='ds_pop_fd')
+    ds_fd.inputs.regexp_substitutions = [("(\/)[^\/]*$", "FD.txt")]
+    ds_fd.inputs.base_directory = SinkDir
 
     plot_motion_rot = pe.MapNode(
         interface=fsl.PlotMotionParams(in_source='fsl'),
@@ -186,8 +206,8 @@ def mc_workflow(SinkTag = "func_preproc",
     # Create a workflow to connect all those nodes
     analysisflow = nipype.Workflow(wf_name)
     analysisflow.connect(inputspec, 'func', mcflirt, 'in_file')
-    analysisflow.connect(inputspec, 'func', lastvolnum, 'in_files')
-    analysisflow.connect(lastvolnum, 'lastvolidx', mcflirt, 'ref_vol')
+    #analysisflow.connect(inputspec, 'func', lastvolnum, 'in_files')
+    #analysisflow.connect(lastvolnum, 'lastvolidx', mcflirt, 'ref_vol')
     analysisflow.connect(mcflirt, 'par_file', calc_friston, 'in_file')
     analysisflow.connect(mcflirt, 'par_file', calculate_FD, 'in_file')
 
@@ -207,6 +227,10 @@ def mc_workflow(SinkTag = "func_preproc",
     analysisflow.connect(plot_motion_rot, 'out_file', ds_qc_rot, 'motion_correction')
     analysisflow.connect(plot_motion_tra, 'out_file', ds_qc_tra, 'motion_correction')
     analysisflow.connect(mcflirt, 'out_file', myqc, 'inputspec.func')
+    # pop-level mean FD
+    analysisflow.connect(calculate_FD, 'out_file', meanFD, 'in_file')
+    analysisflow.connect(meanFD, 'mean_file', pop_FD, 'in_list')
+    analysisflow.connect(pop_FD, 'txt_file', ds_fd, 'pop')
 
     return analysisflow
 

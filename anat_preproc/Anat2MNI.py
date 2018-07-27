@@ -90,11 +90,16 @@ def anat2mni_fsl_workflow(SinkTag="anat_preproc", wf_name="anat2mni_fsl"):
                                name='inv_linear_reg0_xfm')
     inv_flirt_xfm.inputs.invert_xfm = True
 
+    # Calculate inverse of the nonlinear warping field
+    inv_fnirt_xfm = pe.MapNode(interface=fsl.utils.InvWarp(),
+                               iterfield=['warp', 'reference'],
+                               name="inv_nonlinear_xfm")
+
     # Create png images for quality check
     myqc = qc.vol2png("anat2mni", "FSL", overlayiterated=False)
     myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
     myqc.inputs.slicer.image_width = 500
-    myqc.inputs.slicer.threshold_edges = 0.12
+    myqc.inputs.slicer.threshold_edges = 0.1
 
     # Save outputs which are important
     ds = pe.Node(interface=io.DataSink(), name='ds')
@@ -105,7 +110,9 @@ def anat2mni_fsl_workflow(SinkTag="anat_preproc", wf_name="anat2mni_fsl"):
     outputspec = pe.Node(utility.IdentityInterface(fields=['output_brain',
                                                            'linear_xfm',
                                                            'invlinear_xfm',
-                                                           'nonlinear_xfm']),
+                                                           'nonlinear_xfm',
+                                                           'invnonlinear_xfm',
+                                                           'std_template']),
                          name='outputspec')
 
     # Create workflow nad connect nodes
@@ -127,7 +134,13 @@ def anat2mni_fsl_workflow(SinkTag="anat_preproc", wf_name="anat2mni_fsl"):
     analysisflow.connect(brain_warp, 'out_file',outputspec, 'output_brain')
     analysisflow.connect(linear_reg, 'out_matrix_file',inv_flirt_xfm, 'in_file')
     analysisflow.connect(inv_flirt_xfm, 'out_file',outputspec, 'invlinear_xfm')
+
+    analysisflow.connect(nonlinear_reg, 'fieldcoeff_file', inv_fnirt_xfm, 'warp')
+    analysisflow.connect(inputspec, 'brain', inv_fnirt_xfm, 'reference')
+    analysisflow.connect(inv_fnirt_xfm, 'inverse_warp', outputspec, 'invnonlinear_xfm')
+
     analysisflow.connect(linear_reg, 'out_matrix_file',outputspec, 'linear_xfm')
+    analysisflow.connect(inputspec, 'reference_brain', outputspec, 'std_template')
     analysisflow.connect(brain_warp, 'out_file', ds, 'anat2mni_std')
     analysisflow.connect(nonlinear_reg, 'fieldcoeff_file', ds, 'anat2mni_warpfield')
     analysisflow.connect(brain_warp, 'out_file', myqc, 'inputspec.bg_image')
@@ -178,8 +191,8 @@ def anat2mni_ants_workflow(SinkTag="anat_preproc", wf_name="anat2mni_ants"):
                                                           'reference_skull']),
                         name='inputspec')
 
-    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm_brain.nii.gz"
-    inputspec.inputs.reference_skull = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm.nii.gz"
+    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz" #TODO: 1 or 2mm???
+    inputspec.inputs.reference_skull = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm.nii.gz"
 
     # Multi-stage registration node with ANTS
     reg = pe.MapNode(interface=Registration(),
@@ -209,31 +222,31 @@ def anat2mni_ants_workflow(SinkTag="anat_preproc", wf_name="anat2mni_ants"):
     reg.inputs.winsorize_lower_quantile = 0.01
     reg.inputs.winsorize_upper_quantile = 0.99
 
-
-    # Applying warp field
-
     # Calculate the invers of the linear transformation
 
     # Create png images for quality check
     # Create png images for quality check
     myqc = qc.vol2png("anat2mni", "ANTS", overlayiterated=False)
-    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm_brain.nii.gz"
-    myqc.inputs.slicer.image_width = 5000
-    myqc.inputs.slicer.threshold_edges = 0.1  # for the 1mm template
+    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz" #TODO: 1 or 2mm???
+    myqc.inputs.slicer.image_width = 500 # 5000 # for the 1mm template
+    myqc.inputs.slicer.threshold_edges = 0.1 # 0.1  # for the 1mm template
 
 
     # Save outputs which are important
     ds = pe.Node(interface=io.DataSink(), name='ds_nii')
     ds.inputs.base_directory = SinkDir
-    #ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
+    ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
 
     # Define outputs of the workflow
     outputspec = pe.Node(utility.IdentityInterface(fields=['output_brain',
                                                            'linear_xfm',
                                                            'invlinear_xfm',
                                                            'nonlinear_xfm',
-                                                           'composite_transform']),
+                                                           'invnonlinear_xfm',
+                                                           'std_template']),
                          name='outputspec')
+
+    outputspec.inputs.std_template=inputspec.inputs.reference_brain
 
     # Create workflow nad connect nodes
     analysisflow = pe.Workflow(name=wf_name)
@@ -242,9 +255,10 @@ def anat2mni_ants_workflow(SinkTag="anat_preproc", wf_name="anat2mni_ants"):
     analysisflow.connect(inputspec, 'brain', reg, 'moving_image')
 
     analysisflow.connect(reg, 'composite_transform', outputspec, 'nonlinear_xfm')
+    analysisflow.connect(reg, 'inverse_composite_transform', outputspec, 'invnonlinear_xfm')
     analysisflow.connect(reg, 'warped_image',outputspec, 'output_brain')
     analysisflow.connect(reg, 'warped_image', ds, 'anat2mni_std')
     analysisflow.connect(reg, 'composite_transform', ds, 'anat2mni_warpfield')
-    analysisflow.connect(brain_warp, 'out_file', myqc, 'inputspec.bg_image')
+    analysisflow.connect(reg, 'warped_image', myqc, 'inputspec.bg_image')
 
     return analysisflow

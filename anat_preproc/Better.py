@@ -1,4 +1,4 @@
-def bet_workflow(Robust=True, SinkTag="anat_preproc", wf_name="brain_extraction"):
+def bet_workflow(Robust=True, fmri=False, SinkTag="anat_preproc", wf_name="brain_extraction"):
 
     """
     Modified version of CPAC.anat_preproc.anat_preproc:
@@ -30,10 +30,6 @@ def bet_workflow(Robust=True, SinkTag="anat_preproc", wf_name="brain_extraction"
 
     """
 
-
-    #This is a Nipype generator. Warning, here be dragons.
-    #!/usr/bin/env python
-    import sys
     import os
     import nipype
     import nipype.pipeline as pe
@@ -48,19 +44,30 @@ def bet_workflow(Robust=True, SinkTag="anat_preproc", wf_name="brain_extraction"
         os.makedirs(SinkDir)
 
     #Basic interface class generates identity mappings
-    inputspec = pe.Node(utility.IdentityInterface(fields=['anat',
-                                                          'opt_R']),
+    inputspec = pe.Node(utility.IdentityInterface(fields=['in_file',
+                                                          'opt_R',
+                                                          'fract_int_thr']),
                         name='inputspec')
     inputspec.inputs.opt_R = Robust
+    if fmri:
+        inputspec.inputs.fract_int_thr = 0.3
+    else:
+        inputspec.inputs.fract_int_thr = 0.5
 
     #Wraps command **bet**
     bet = pe.MapNode(interface=fsl.BET(),
                      iterfield=['in_file'],
                   name='bet')
     bet.inputs.mask=True
-    #bet.inputs.robust=Robust
+    # bet.inputs.robust=Robust
+    if fmri:
+        bet.inputs.functional = True
+        applymask = pe.MapNode(fsl.ApplyMask(),
+                               iterfield=['in_file', 'mask_file'],
+                               name="apply_mask")
 
-    myqc = qc.vol2png("brain_extraction", overlay=False)
+
+    myqc = qc.vol2png(wf_name, overlay=True)
 
     #Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['brain',
@@ -78,14 +85,21 @@ def bet_workflow(Robust=True, SinkTag="anat_preproc", wf_name="brain_extraction"
     #Create a workflow to connect all those nodes
     analysisflow = nipype.Workflow(wf_name)  # The name here determine the folder of the workspace
     analysisflow.base_dir = '.'
-    analysisflow.connect(inputspec, 'anat', bet, 'in_file')
+    analysisflow.connect(inputspec, 'in_file', bet, 'in_file')
     analysisflow.connect(inputspec, 'opt_R', bet, 'robust')
+    analysisflow.connect(inputspec, 'fract_int_thr', bet, 'frac')
     analysisflow.connect(bet, 'mask_file', outputspec, 'brain_mask')
-    analysisflow.connect(bet, 'out_file', outputspec, 'brain')
+    if fmri:
+        analysisflow.connect(bet, 'mask_file', applymask, 'mask_file')
+        analysisflow.connect(inputspec, 'in_file', applymask, 'in_file')
+        analysisflow.connect(applymask, 'out_file', outputspec, 'brain')
+    else:
+        analysisflow.connect(bet, 'out_file', outputspec, 'brain')
     analysisflow.connect(bet, 'out_file', ds, 'bet_brain')
     analysisflow.connect(bet, 'mask_file', ds, 'bet_mask')
 
-    analysisflow.connect(bet, 'out_file', myqc, 'inputspec.bg_image')
+    analysisflow.connect(inputspec, 'in_file', myqc, 'inputspec.bg_image')
+    analysisflow.connect(bet, 'out_file', myqc, 'inputspec.overlay_image')
 
     return analysisflow
 

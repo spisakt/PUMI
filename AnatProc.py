@@ -4,19 +4,22 @@ import PUMI.anat_preproc.Better as bet
 import PUMI.anat_preproc.Faster as fast
 import PUMI.anat_preproc.Anat2MNI as anat2mni
 import nipype.interfaces.utility as utility
+import nipype.interfaces.afni as afni
+import nipype.interfaces.fsl as fsl
+import nipype.interfaces.ants as ants
+import PUMI.utils.globals as globals
 
-class RegType:
-    FSL = 1
-    ANTS = 2
-
-def AnatProc(stdreg=RegType.FSL, SinkTag="anat_preproc", wf_name="anatproc"):
+def AnatProc(stdreg, SinkTag="anat_preproc", wf_name="anatproc"):
     """
+    stdreg: either globals._RegType_.ANTS or globals._RegType_.FSL (do default value to make sure the user has to decide explicitly)
+
+
         Performs processing of anatomical images:
         - brain extraction
         - tissue type segmentation
         - spatial standardization (with either FSL or ANTS)
 
-        Images should be already reoriented, e.g. with fsl fslreorient2std (see scripts/ex_pipeline.py)
+        Images should be already "reoriented", e.g. with fsl fslreorient2std (see scripts/ex_pipeline.py)
 
         Workflow inputs:
             :param func: The functional image file.
@@ -63,10 +66,30 @@ def AnatProc(stdreg=RegType.FSL, SinkTag="anat_preproc", wf_name="anatproc"):
     mybet = bet.bet_workflow()
     myfast = fast.fast_workflow()
 
-    if (stdreg==RegType.FSL):
+    if stdreg==globals._RegType_.FSL:
         myanat2mni = anat2mni.anat2mni_fsl_workflow()
     else:  # ANTS
         myanat2mni = anat2mni.anat2mni_ants_workflow()
+
+    #resample 2mm-std ventricle to the actual standard space
+    resample_std_ventricle = pe.Node(interface=afni.Resample(outputtype='NIFTI_GZ',
+                                          in_file=globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_VentricleMask.nii.gz"),
+                         name='resample_std_ventricle') #default interpolation is nearest neighbour
+
+    #transform std ventricle mask to anat space, applying the invers warping filed
+    if (stdreg ==globals._RegType_.FSL):
+        unwarp_ventricle = pe.MapNode(interface=fsl.ApplyWarp(),
+                           iterfield=['ref_file', 'field_file'],
+                           name='unwarp_ventricle')
+    else:  # ANTS
+        unwarp_ventricle = pe.MapNode(interface=ants.ApplyTransforms(),
+                                      iterfield=['reference_image', 'transforms'],
+                                      name='unwarp_ventricle')
+
+    # mask csf segmentation with anat-space ventricle mask
+    ventricle_mask = pe.MapNode(fsl.ImageMaths(op_string=' -mas'),
+                                iterfield=['in_file', 'in_file2'],
+                                name="ventricle_mask")
 
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['brain',
@@ -75,13 +98,15 @@ def AnatProc(stdreg=RegType.FSL, SinkTag="anat_preproc", wf_name="anatproc"):
                                                            'probmap_gm',
                                                            'probmap_wm',
                                                            'probmap_csf',
+                                                           'probmap_ventricle',
                                                            'parvol_gm',
                                                            'parvol_wm',
                                                            'parvol_csf',
                                                            'partvol_map',
                                                            'anat2mni_warpfield',
                                                            'std_brain',
-                                                           'stdregtype']),
+                                                           'stdregtype',
+                                                           'std_template']),
                          name='outputspec')
 
     outputspec.inputs.stdregtype = stdreg;  # return regtype as well
@@ -92,7 +117,7 @@ def AnatProc(stdreg=RegType.FSL, SinkTag="anat_preproc", wf_name="anatproc"):
     totalWorkflow = nipype.Workflow(wf_name)
     totalWorkflow.connect([
         (inputspec, mybet,
-         [('anat', 'inputspec.anat')]),
+         [('anat', 'inputspec.in_file')]),
         (mybet, myfast,
          [('outputspec.brain', 'inputspec.brain')]),
         (mybet, myanat2mni,
@@ -104,6 +129,14 @@ def AnatProc(stdreg=RegType.FSL, SinkTag="anat_preproc", wf_name="anatproc"):
           ('outputspec.brain_mask', 'brain_mask')]),
         (inputspec, outputspec,
          [('anat', 'skull')]),
+        (myanat2mni, resample_std_ventricle,
+         [('outputspec.std_template', 'master')]),
+        (myfast, ventricle_mask,
+         [('outputspec.probmap_csf', 'in_file')]),
+
+        (ventricle_mask, outputspec,
+         [('out_file', 'probmap_ventricle')]),
+
         (myfast, outputspec,
          [('outputspec.partial_volume_map', 'parvol_map'),
           ('outputspec.probmap_csf', 'probmap_csf'),
@@ -115,9 +148,21 @@ def AnatProc(stdreg=RegType.FSL, SinkTag="anat_preproc", wf_name="anatproc"):
 
         (myanat2mni, outputspec,
          [('outputspec.nonlinear_xfm', 'anat2mni_warpfield'),
-          ('outputspec.output_brain', 'std_brain')]),
+          ('outputspec.output_brain', 'std_brain'),
+          ('outputspec.std_template', 'std_template')]),
 
     ])
+
+    if stdreg == globals._RegType_.FSL:
+        totalWorkflow.connect(resample_std_ventricle, 'out_file', unwarp_ventricle, 'in_file')
+        totalWorkflow.connect(inputspec, 'anat', unwarp_ventricle, 'ref_file')
+        totalWorkflow.connect(myanat2mni, 'outputspec.invnonlinear_xfm', unwarp_ventricle, 'field_file')
+        totalWorkflow.connect(unwarp_ventricle, 'out_file', ventricle_mask, 'in_file2')
+    else: #ANTs
+        totalWorkflow.connect(resample_std_ventricle, 'out_file', unwarp_ventricle, 'input_image')
+        totalWorkflow.connect(inputspec, 'anat', unwarp_ventricle, 'reference_image')
+        totalWorkflow.connect(myanat2mni, 'outputspec.invnonlinear_xfm', unwarp_ventricle, 'transforms')
+        totalWorkflow.connect(unwarp_ventricle, 'output_image', ventricle_mask, 'in_file2')
 
     return totalWorkflow
 

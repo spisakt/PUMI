@@ -40,6 +40,7 @@ datagrab.inputs.field_template = dict(func=sys.argv[2],
 datagrab.inputs.sort_filelist = True
 
 
+
 # build the actual pipeline
 reorient_struct = pe.MapNode(fsl.utils.Reorient2Std(),
                       iterfield=['in_file'],

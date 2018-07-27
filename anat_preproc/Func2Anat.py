@@ -1,4 +1,4 @@
-def bbr_workflow(SinkTag="anat_preproc", wf_name="func2anat"):
+def bbr_workflow(SinkTag="func_preproc", wf_name="func2anat"):
 
 
     """
@@ -55,7 +55,8 @@ def bbr_workflow(SinkTag="anat_preproc", wf_name="func2anat"):
                                                        'skull',
                                                        'anat_wm_segmentation',
                                                        'anat_gm_segmentation',
-                                                       'anat_csf_segmentation']),
+                                                       'anat_csf_segmentation',
+                                                        'anat_ventricle_segmentation']),
                         name='inputspec')
 
 
@@ -85,6 +86,12 @@ def bbr_workflow(SinkTag="anat_preproc", wf_name="func2anat"):
                              iterfield=['in_file'],
                              name='gm_bb_mask')
     gm_bb_mask.inputs.op_string = '-thr 0.5 -bin'
+
+    # ventricle probability map is thresholded and masked
+    vent_bb_mask = pe.MapNode(interface=fsl.ImageMaths(),
+                            iterfield=['in_file'],
+                            name='vent_bb_mask')
+    vent_bb_mask.inputs.op_string = '-thr 0.5 -bin'
 
     # add the CSF and WM masks
     #add_masks=pe.MapNode(interface=fsl.ImageMaths(),
@@ -117,20 +124,26 @@ def bbr_workflow(SinkTag="anat_preproc", wf_name="func2anat"):
     convertmatrix.inputs.invert_xfm = True
 
     # use the invers registration (anat to func) to transform anatomical csf mask
-    reg_anatmask_to_func1 = pe.MapNode(interface=fsl.FLIRT(apply_xfm=True),
+    reg_anatmask_to_func1 = pe.MapNode(interface=fsl.FLIRT(apply_xfm=True, interp='nearestneighbour'),
                                        iterfield=['in_file', 'reference', 'in_matrix_file'],
                                        name='anatmasks_to_func1')
     #reg_anatmask_to_func1.inputs.apply_xfm = True
     # use the invers registration (anat to func) to transform anatomical wm mask
-    reg_anatmask_to_func2 = pe.MapNode(interface=fsl.FLIRT(apply_xfm=True),
+    reg_anatmask_to_func2 = pe.MapNode(interface=fsl.FLIRT(apply_xfm=True, interp='nearestneighbour'),
                                        iterfield=['in_file', 'reference', 'in_matrix_file'],
                                        name='anatmasks_to_func2')
     #reg_anatmask_to_func2.inputs.apply_xfm = True
 
     # use the invers registration (anat to func) to transform anatomical gm mask
-    reg_anatmask_to_func3 = pe.MapNode(interface=fsl.FLIRT(apply_xfm=True),
+    reg_anatmask_to_func3 = pe.MapNode(interface=fsl.FLIRT(apply_xfm=True, interp='nearestneighbour'),
                                        iterfield=['in_file', 'reference', 'in_matrix_file'],
                                        name='anatmasks_to_func3')
+    # reg_anatmask_to_func2.inputs.apply_xfm = True
+
+    # use the invers registration (anat to func) to transform anatomical gm mask
+    reg_anatmask_to_func4 = pe.MapNode(interface=fsl.FLIRT(apply_xfm=True, interp='nearestneighbour'),
+                                       iterfield=['in_file', 'reference', 'in_matrix_file'],
+                                       name='anatmasks_to_func4')
     # reg_anatmask_to_func2.inputs.apply_xfm = True
 
     # Create png images for quality check
@@ -148,7 +161,8 @@ def bbr_workflow(SinkTag="anat_preproc", wf_name="func2anat"):
                                                             'anat_to_func_linear_xfm',
                                                             'csf_mask_in_funcspace',
                                                             'wm_mask_in_funcspace',
-                                                            'gm_mask_in_funcspace']),
+                                                            'gm_mask_in_funcspace',
+                                                            'ventricle_mask_in_funcspace']),
                          name='outputspec')
 
     analysisflow = pe.Workflow(name=wf_name)
@@ -171,16 +185,21 @@ def bbr_workflow(SinkTag="anat_preproc", wf_name="func2anat"):
     analysisflow.connect(convertmatrix, 'out_file',reg_anatmask_to_func3,'in_matrix_file')
     analysisflow.connect(inputspec, 'func', reg_anatmask_to_func3, 'reference')
     analysisflow.connect(gm_bb_mask, 'out_file', reg_anatmask_to_func3, 'in_file')
+    analysisflow.connect(convertmatrix, 'out_file', reg_anatmask_to_func4, 'in_matrix_file')
+    analysisflow.connect(inputspec, 'func', reg_anatmask_to_func4, 'reference')
+    analysisflow.connect(vent_bb_mask, 'out_file', reg_anatmask_to_func4, 'in_file')
     analysisflow.connect(inputspec, 'anat_wm_segmentation', wm_bb_mask, 'in_file')
     analysisflow.connect(inputspec, 'anat_csf_segmentation', csf_bb_mask, 'in_file')
     analysisflow.connect(inputspec, 'anat_gm_segmentation', gm_bb_mask, 'in_file')
+    analysisflow.connect(inputspec, 'anat_ventricle_segmentation', vent_bb_mask, 'in_file')
     analysisflow.connect(bbreg_func_to_anat, 'out_file', outputspec, 'func_sample2anat')
     analysisflow.connect(bbreg_func_to_anat, 'out_matrix_file', outputspec, 'func_to_anat_linear_xfm')
     analysisflow.connect(reg_anatmask_to_func1,'out_file',outputspec, 'csf_mask_in_funcspace')
     analysisflow.connect(reg_anatmask_to_func2,'out_file',outputspec, 'wm_mask_in_funcspace')
     analysisflow.connect(reg_anatmask_to_func3, 'out_file', outputspec, 'gm_mask_in_funcspace')
+    analysisflow.connect(reg_anatmask_to_func4, 'out_file', outputspec, 'ventricle_mask_in_funcspace')
     analysisflow.connect(convertmatrix, 'out_file',outputspec,'anat_to_func_linear_xfm')
-    analysisflow.connect(bbreg_func_to_anat, 'out_file', ds, 'bbr')
+    analysisflow.connect(bbreg_func_to_anat, 'out_file', ds, "func2anat")
     analysisflow.connect(bbreg_func_to_anat, 'out_file', myqc, 'inputspec.bg_image')
     analysisflow.connect(wm_bb_mask, 'out_file', myqc, 'inputspec.overlay_image')
 

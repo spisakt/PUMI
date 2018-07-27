@@ -62,18 +62,33 @@ def concatenate(par1, par2='', par3='', par4='', par5='', par6='', par7='', par8
     return os.getcwd() + '/parfiles'
 
 
-def list2TxtFile(in_list):
+def list2TxtFile(in_list, filelist=True, rownum=-1, out_file='params.txt'):
+    # filelist==True: list is a list of files to be opened
+    # filelist==False: list is a list iof the actual values to save
+
+    # rownum <0: do not write rownums to file
+    # rownum == 0: write rownums to file, beginning from 0, like nipype numbers subjects
+    # rownum < 0: write rownums to file, beginning from 1, WARNING: very unpythonic!!!
+
     import numpy as np
     import os
-    print '************'
-    print in_list
 
-    x = []
-    for i in in_list:
-        x.append(np.loadtxt(i))
+    if filelist:
+        x = []
+        for i in in_list:
+            x.append(np.loadtxt(i))
+    else:
+        x = np.array(in_list)
 
-    np.savetxt('params.txt', x)
-    return os.getcwd() + '/params.txt'
+    if rownum == 0:
+        x = np.dstack((np.arange(0, x.size), x))[0]
+        np.savetxt(out_file, x, "%s\t%s")
+    elif rownum > 0:
+        x = np.dstack((np.arange(1, x.size+1), x))[0]
+        np.savetxt(out_file, x, "%s\t%s")
+    else:
+        np.savetxt(out_file, x)
+    return os.getcwd() + '/' + out_file
 
 ###############################################
 
@@ -97,6 +112,6 @@ DropFirstLine = Function(input_names=['txt'],
                        output_names=['droppedtxtfloat'],
                        function=drop_firstline)
 
-List2TxtFile = Function(input_names=['in_list'],
+List2TxtFile = Function(input_names=['in_list', 'filelist', 'rownum', 'out_file'],
                        output_names=['txt_file'],
                        function=list2TxtFile)

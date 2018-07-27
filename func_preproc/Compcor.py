@@ -61,6 +61,12 @@ def compcor_workflow(SinkTag="func_preproc", wf_name="compcor"):
 
     myqc = qc.vol2png("compcor_noiseroi")
 
+    # Save outputs which are important
+    ds_nii = pe.Node(interface=io.DataSink(),
+                 name='ds_nii')
+    ds_nii.inputs.base_directory = SinkDir
+    ds_nii.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
+
     # Calculate compcor files
     compcor=pe.MapNode(interface=cnf.ACompCor(pre_filter=False,header_prefix=""),
                        iterfield=['realigned_file','repetition_time','mask_files'],
@@ -103,5 +109,7 @@ def compcor_workflow(SinkTag="func_preproc", wf_name="compcor"):
 
     analysisflow.connect(inputspec, 'func_aligned', myqc, 'inputspec.bg_image')
     analysisflow.connect(inputspec, 'mask_file', myqc, 'inputspec.overlay_image')
+
+    analysisflow.connect(inputspec, 'mask_file', ds_nii, 'compcor_noise_mask')
 
     return analysisflow

@@ -64,15 +64,13 @@ def median_angle_correct(target_angle_deg, realigned_file):
     #print 'Correlation of Global and U: ' + corr_gu
 
     median_angle = np.median(np.arccos(np.dot(PC1.T, Yn)))
-    #print 'Median Angle: ' + (180.0 / np.pi) * median_angle, \
-    #    ', Target Angle: ' + target_angle_deg
+    print '*** Median Angle: ' + str((180.0 / np.pi) * median_angle) + ', Target Angle: ' + str(target_angle_deg)
     angle_shift = (np.pi / 180) * target_angle_deg - median_angle
     if (angle_shift > 0):
-        #print 'Shifting all vectors by ', \
-        #    (180.0 / np.pi) * angle_shift + ' degrees.'
+        print '*** Shifting all vectors by ' + str((180.0 / np.pi) * angle_shift) + ' degrees.'
         Ynf = shiftCols(PC1, Yn, angle_shift)
     else:
-       # print 'Median Angle >= Target Angle, skipping correction'
+        print '*** Warning: Median Angle >= Target Angle, skipping correction'
         Ynf = Yn
 
     corrected_file = os.path.join(os.getcwd(), 'median_angle_corrected.nii.gz')
@@ -168,6 +166,8 @@ def mac_workflow(target_angle=90,
     import os
     import nipype.pipeline.engine as pe
     import nipype.interfaces.utility as utility
+    import PUMI.utils.utils_convert as utils_convert
+    import nipype.interfaces.io as io
     import PUMI.utils.globals as globals
     import PUMI.utils.QC as qc
 
@@ -183,6 +183,8 @@ def mac_workflow(target_angle=90,
                                                         'pc_angles']),
                          name='outputspec')
 
+
+    # Caution: inpout fmri must be masked (background=0)
     mac = pe.MapNode(utility.Function(input_names=['target_angle_deg',
                                              'realigned_file'],
                                 output_names=['corrected_file',
@@ -193,6 +195,14 @@ def mac_workflow(target_angle=90,
 
     myqc = qc.timecourse2png("timeseries", tag="050_medang")
 
+    # collect and save median angle values
+    pop_medang = pe.Node(interface=utils_convert.List2TxtFile,
+                     name='pop_medang')
+    # save data out with Datasink
+    ds_medang = pe.Node(interface=io.DataSink(), name='ds_pop_medang')
+    ds_medang.inputs.regexp_substitutions = [("(\/)[^\/]*$", "medang.txt")]
+    ds_medang.inputs.base_directory = SinkDir
+
     #TODO set which files should be put into the datasink node...
     # Create workflow
     analysisflow= pe.Workflow(wf_name)
@@ -201,8 +211,9 @@ def mac_workflow(target_angle=90,
     analysisflow.connect(mac, 'corrected_file', outputspec, 'final_func')
     analysisflow.connect(mac, 'angles_file', outputspec, 'pc_angles')
     analysisflow.connect(mac, 'corrected_file', myqc, 'inputspec.func')
-
-    #todo qc timeseries
+    # pop-level medang values
+    analysisflow.connect(mac, 'angles_file', pop_medang, 'in_list')
+    analysisflow.connect(pop_medang, 'txt_file', ds_medang, 'pop')
 
     return analysisflow
 # After here, functions are manipulating in a group level.

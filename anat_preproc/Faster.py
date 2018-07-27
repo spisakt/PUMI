@@ -63,6 +63,7 @@ def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation"):
     fast.inputs.probability_maps = True
     fast.inputs.out_basename = 'fast_'
 
+
     myqc = qc.vol2png("tissue_segmentation", overlay=False)
     myqc.inputs.slicer.colour_map = globals._FSLDIR_ + '/etc/luts/renderjet.lut'
 
