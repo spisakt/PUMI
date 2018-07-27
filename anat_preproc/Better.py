@@ -51,11 +51,11 @@ def bet_workflow(Robust=True, fmri=False, SinkTag="anat_preproc", wf_name="brain
                         name='inputspec')
     inputspec.inputs.opt_R = Robust
     if fmri:
-        inputspec.inputs.fract_int_thr = 0.3
+        inputspec.inputs.fract_int_thr = globals._fsl_bet_fract_int_thr_func_
     else:
-        inputspec.inputs.fract_int_thr = 0.5
+        inputspec.inputs.fract_int_thr = globals._fsl_bet_fract_int_thr_anat_
 
-    inputspec.inputs.vertical_gradient = 0
+    inputspec.inputs.vertical_gradient = globals._fsl_bet_vertical_gradient_
 
     #Wraps command **bet**
     bet = pe.MapNode(interface=fsl.BET(),

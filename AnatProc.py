@@ -59,8 +59,13 @@ def AnatProc(stdreg, SinkTag="anat_preproc", wf_name="anatproc"):
         os.makedirs(SinkDir)
 
     # Basic interface class generates identity mappings
-    inputspec = pe.Node(utility.IdentityInterface(fields=['anat']),
+    inputspec = pe.Node(utility.IdentityInterface(fields=['anat',
+                                                          'bet_vertical_gradient',
+                                                          'bet_fract_int_thr']),
                         name='inputspec')
+
+    inputspec.inputs.bet_fract_int_thr = globals._fsl_bet_fract_int_thr_anat_
+    inputspec.inputs.bet_vertical_gradient = globals._fsl_bet_vertical_gradient_
 
     # build the actual pipeline
     mybet = bet.bet_workflow()
@@ -117,7 +122,9 @@ def AnatProc(stdreg, SinkTag="anat_preproc", wf_name="anatproc"):
     totalWorkflow = nipype.Workflow(wf_name)
     totalWorkflow.connect([
         (inputspec, mybet,
-         [('anat', 'inputspec.in_file')]),
+         [('anat', 'inputspec.in_file'),
+          ('bet_fract_int_thr', 'inputspec.fract_int_thr'),
+          ('bet_vertical_gradient', 'inputspec.vertical_gradient')]),
         (mybet, myfast,
          [('outputspec.brain', 'inputspec.brain')]),
         (mybet, myanat2mni,
