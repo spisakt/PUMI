@@ -63,6 +63,8 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
                       name="reorient_func")
 
 myanatproc = anatproc.AnatProc(stdreg=_regtype_)
+myanatproc.inputs.inputspec.bet_fract_int_thr = 0.45  # feel free to adjust, a nice bet is important!
+myanatproc.inputs.inputspec.bet_vertical_gradient = 0 # feel free to adjust, a nice bet is important!
 
 mybbr = bbr.bbr_workflow()
 # Add arbitrary number of nii images wthin the same space. The default is to add csf and wm masks for anatcompcor calculation.

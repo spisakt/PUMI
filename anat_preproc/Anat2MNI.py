@@ -222,9 +222,7 @@ def anat2mni_ants_workflow(SinkTag="anat_preproc", wf_name="anat2mni_ants"):
     reg.inputs.winsorize_lower_quantile = 0.01
     reg.inputs.winsorize_upper_quantile = 0.99
 
-    # Calculate the invers of the linear transformation
 
-    # Create png images for quality check
     # Create png images for quality check
     myqc = qc.vol2png("anat2mni", "ANTS", overlayiterated=False)
     myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz" #TODO: 1 or 2mm???

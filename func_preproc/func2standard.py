@@ -82,6 +82,8 @@ def func2mni(stdreg, carpet_plot="", wf_name='func2mni', SinkTag="func_preproc")
                          iterfield=['in_file','field_file','premat'],
                          name='applywarp')
         myqc = qc.vol2png("func2mni", wf_name + "_FSL", overlayiterated=False)
+        myqc.inputs.slicer.image_width = 500  # 5000 # for the 1mm template
+        myqc.inputs.slicer.threshold_edges = 0.1  # 0.1  # for the 1mm template
     else: #ANTs
         # source file for C3dAffineToolmust not be 4D, so we extract the one example vol
         myonevol = onevol.onevol_workflow()
@@ -100,6 +102,8 @@ def func2mni(stdreg, carpet_plot="", wf_name='func2mni', SinkTag="func_preproc")
                                iterfield=['input_image', 'transforms'],
                                name='applywarp')
         myqc = qc.vol2png("func2mni", wf_name + "_ANTS", overlayiterated=False)
+        myqc.inputs.slicer.image_width = 500  # 5000 # for the 1mm template
+        myqc.inputs.slicer.threshold_edges = 0.1  # 0.1  # for the 1mm template
 
 
 
