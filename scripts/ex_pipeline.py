@@ -144,7 +144,8 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_template', 'inputspec.reference_brain')]),
+      ('outputspec.std_template', 'inputspec.reference_brain'),
+      ('outputspec.brain', 'inputspec.anat')]),
     (resample_atlas, myfunc2mni,
      [('out_file', 'inputspec.atlas')]),
 
@@ -155,7 +156,8 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni_cc,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_template', 'inputspec.reference_brain')]),
+      ('outputspec.std_template', 'inputspec.reference_brain'),
+      ('outputspec.brain', 'inputspec.anat')]),
     (resample_atlas, myfunc2mni_cc,
      [('out_file', 'inputspec.atlas')]),
 
@@ -166,7 +168,8 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni_cc_bpf,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_template', 'inputspec.reference_brain')]),
+      ('outputspec.std_template', 'inputspec.reference_brain'),
+      ('outputspec.brain', 'inputspec.anat')]),
     (resample_atlas, myfunc2mni_cc_bpf,
      [('out_file', 'inputspec.atlas')]),
 
@@ -177,7 +180,8 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni_cc_bpf_cens,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_template', 'inputspec.reference_brain')]),
+      ('outputspec.std_template', 'inputspec.reference_brain'),
+      ('outputspec.brain', 'inputspec.anat')]),
     (resample_atlas, myfunc2mni_cc_bpf_cens,
      [('out_file', 'inputspec.atlas')]),
 
@@ -188,7 +192,8 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni_cc_bpf_cens_mac,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_template', 'inputspec.reference_brain')]),
+      ('outputspec.std_template', 'inputspec.reference_brain'),
+      ('outputspec.brain', 'inputspec.anat')]),
     (resample_atlas, myfunc2mni_cc_bpf_cens_mac,
      [('out_file', 'inputspec.atlas')]),
 

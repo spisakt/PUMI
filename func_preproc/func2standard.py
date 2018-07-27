@@ -49,6 +49,7 @@ def func2mni(stdreg, carpet_plot="", wf_name='func2mni', SinkTag="func_preproc")
     import nipype.interfaces.ants as ants
     from nipype.interfaces.c3 import C3dAffineTool
     import PUMI.utils.globals as globals
+    import PUMI.func_preproc.Onevol as onevol
     import PUMI.utils.QC as qc
     import nipype.interfaces.io as io
     from nipype.interfaces.utility import Function
@@ -58,6 +59,7 @@ def func2mni(stdreg, carpet_plot="", wf_name='func2mni', SinkTag="func_preproc")
         os.makedirs(SinkDir)
 
     inputspec=pe.Node(utility.IdentityInterface(fields=['func',
+                                                        'anat', # only obligatory if stdreg==globals._RegType_.ANTS
                                                         'linear_reg_mtrx',
                                                         'nonlinear_reg_mtrx',
                                                         'reference_brain',
@@ -81,9 +83,11 @@ def func2mni(stdreg, carpet_plot="", wf_name='func2mni', SinkTag="func_preproc")
                          name='applywarp')
         myqc = qc.vol2png("func2mni", wf_name + "_FSL", overlayiterated=False)
     else: #ANTs
+        # source file for C3dAffineToolmust not be 4D, so we extract the one example vol
+        myonevol = onevol.onevol_workflow()
         # concat premat and ants transform
         bbr2ants = pe.MapNode(interface=C3dAffineTool(fsl2ras=True, itk_transform=True),
-                              iterfield=['source_file', 'transform_file'],  # output: 'itk_transform'
+                              iterfield=['source_file', 'transform_file', 'reference_file'],  # output: 'itk_transform'
                               name="bbr2ants")
         #concat trfs into a list
         trflist = pe.MapNode(interface=Function(input_names=['linear', 'nonlinear'],
@@ -123,9 +127,10 @@ def func2mni(stdreg, carpet_plot="", wf_name='func2mni', SinkTag="func_preproc")
         analysisflow.connect(inputspec, 'reference_brain', myqc, 'inputspec.overlay_image')
         analysisflow.connect(applywarp, 'out_file', ds_nii, 'func2mni')
     else:  # ANTs
-        analysisflow.connect(inputspec, 'func', bbr2ants, 'source_file')
+        analysisflow.connect(inputspec, 'func', myonevol, 'inputspec.func')
+        analysisflow.connect(myonevol, 'outputspec.func1vol', bbr2ants, 'source_file')
         analysisflow.connect(inputspec, 'linear_reg_mtrx', bbr2ants, 'transform_file')
-        analysisflow.connect(inputspec, 'reference_brain', bbr2ants, 'reference_file')
+        analysisflow.connect(inputspec, 'anat', bbr2ants, 'reference_file')
         analysisflow.connect(bbr2ants, 'itk_transform', trflist, 'linear')
         analysisflow.connect(inputspec, 'nonlinear_reg_mtrx', trflist,'nonlinear')
         analysisflow.connect(trflist, 'trflist', applywarp, 'transforms')
