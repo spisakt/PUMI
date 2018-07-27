@@ -21,6 +21,7 @@ import PUMI.func_preproc.info.info_get as info_get
 import os
 import PUMI.utils.utils_math as utils_math
 import PUMI.utils.utils_convert as utils_convert
+import PUMI.utils.globals as globals
 import PUMI.utils.QC as qc
 # parse command line arguments
 if (len(sys.argv) <= 2):
@@ -40,6 +41,16 @@ datagrab.inputs.field_template = dict(func=sys.argv[2],
 datagrab.inputs.sort_filelist = True
 
 
+# sink: file - idx relationship!!
+pop_id = pe.Node(interface=utils_convert.List2TxtFile,
+                     name='pop_id')
+pop_id.inputs.rownum = 0
+pop_id.inputs.out_file = "subject_IDs.txt"
+pop_id.inputs.filelist = False
+ds_id = pe.Node(interface=nio.DataSink(), name='ds_pop_id')
+ds_id.inputs.regexp_substitutions = [("(\/)[^\/]*$", "IDs.txt")]
+ds_id.inputs.base_directory = globals._SinkDir_
+
 
 # build the actual pipeline
 reorient_struct = pe.MapNode(fsl.utils.Reorient2Std(),
@@ -49,7 +60,7 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
                       iterfield=['in_file'],
                       name="reorient_func")
 
-myanatproc = anatproc.AnatProc(stdreg=anatproc.RegType.FSL)  # regtype MUST be FSL for ICA AROMA!!!
+myanatproc = anatproc.AnatProc(stdreg=globals._RegType_.FSL)  # regtype MUST be FSL for ICA AROMA!!!
 
 mymc = mc.mc_workflow()
 
@@ -77,17 +88,9 @@ scale_glob_4d = pe.MapNode(interface=fsl.ImageMaths(op_string="-ing 1000"),
 #todo: parametrize fwhm
 myaroma = aroma.aroma_workflow(fwhm=8)
 
-func2std = func2standard.func2mni(wf_name='func2std')
-func2std_aroma_nonaggr = func2standard.func2mni(wf_name='func2std_aroma_nonaggr')
-func2std_aroma_aggr = func2standard.func2mni(wf_name='func2std_aroma_aggr')
-
-
-# Calculate FD based on Power's method
-calculate_FD = pe.MapNode(Function(input_names=['in_file'],
-                                         output_names=['out_file'],
-                                         function=dc.calculate_FD_P),
-                              iterfield=['in_file'],
-                           name='calculate_FD')
+func2std = func2standard.func2mni(stdreg=globals._RegType_.FSL, wf_name='func2std')
+func2std_aroma_nonaggr = func2standard.func2mni(stdreg=globals._RegType_.FSL, wf_name='func2std_aroma_nonaggr')
+func2std_aroma_aggr = func2standard.func2mni(stdreg=globals._RegType_.FSL, wf_name='func2std_aroma_aggr')
 
 fmri_qc_original = qc.fMRI2QC("carpet_aroma", tag="1_orinal")
 fmri_qc_nonaggr = qc.fMRI2QC("carpet_aroma", tag="2_nonaggressive")
@@ -108,6 +111,10 @@ totalWorkflow.base_dir = '.'
 
 # anatomical part and func2anat
 totalWorkflow.connect([
+    (datagrab, pop_id,
+     [('func', 'in_list')]),
+    (pop_id, ds_id,
+     [('txt_file', 'subjects')]),
     (datagrab, reorient_struct,
      [('struct', 'in_file')]),
     (reorient_struct, myanatproc,
@@ -121,7 +128,8 @@ totalWorkflow.connect([
     (myanatproc, mybbr,
       [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
        ('outputspec.probmap_csf', 'inputspec.anat_csf_segmentation'),
-       ('outputspec.probmap_gm', 'inputspec.anat_gm_segmentation')]),
+       ('outputspec.probmap_gm', 'inputspec.anat_gm_segmentation'),
+       ('outputspec.probmap_ventricle', 'inputspec.anat_ventricle_segmentation')]),
     (reorient_func, mymc,
      [('out_file', 'inputspec.func')]),
     (mymc, mybet,
@@ -167,25 +175,22 @@ totalWorkflow.connect([
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx')]),
     (myanatproc, func2std_aroma_aggr,
      [('outputspec.std_brain', 'inputspec.reference_brain')]),
-    # calculate FD
-    (mymc, calculate_FD,
-     [('outputspec.mc_par_file', 'in_file')]),
     # carpet plots!!!
     (func2std, fmri_qc_original,
      [('outputspec.func_std', 'inputspec.func')]),
-    (calculate_FD, fmri_qc_original,
-     [('out_file', 'inputspec.confounds')]),
+    (mymc, fmri_qc_original,
+     [('outputspec.FD_file', 'inputspec.confounds')]),
     (func2std_aroma_nonaggr, fmri_qc_nonaggr,
      [('outputspec.func_std', 'inputspec.func')]),
-    (calculate_FD, fmri_qc_nonaggr,
-     [('out_file', 'inputspec.confounds')]),
+    (mymc, fmri_qc_nonaggr,
+     [('outputspec.FD_file', 'inputspec.confounds')]),
     (func2std_aroma_aggr, fmri_qc_aggr,
      [('outputspec.func_std', 'inputspec.func')]),
-    (calculate_FD, fmri_qc_aggr,
-     [('out_file', 'inputspec.confounds')]),
+    (mymc, fmri_qc_aggr,
+     [('outputspec.FD_file', 'inputspec.confounds')]),
     # pop-level mean FD
-    (calculate_FD, meanFD,
-     [('out_file', 'in_file')]),
+    (mymc, meanFD,
+     [('outputspec.FD_file', 'in_file')]),
     (meanFD, pop_FD,
      [('mean_file', 'in_list')])
     ])
