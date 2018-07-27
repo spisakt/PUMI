@@ -46,13 +46,16 @@ def bet_workflow(Robust=True, fmri=False, SinkTag="anat_preproc", wf_name="brain
     #Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=['in_file',
                                                           'opt_R',
-                                                          'fract_int_thr']),
+                                                          'fract_int_thr',  # optional
+                                                          'vertical_gradient']),   # optional
                         name='inputspec')
     inputspec.inputs.opt_R = Robust
     if fmri:
         inputspec.inputs.fract_int_thr = 0.3
     else:
         inputspec.inputs.fract_int_thr = 0.5
+
+    inputspec.inputs.vertical_gradient = 0
 
     #Wraps command **bet**
     bet = pe.MapNode(interface=fsl.BET(),
@@ -88,6 +91,7 @@ def bet_workflow(Robust=True, fmri=False, SinkTag="anat_preproc", wf_name="brain
     analysisflow.connect(inputspec, 'in_file', bet, 'in_file')
     analysisflow.connect(inputspec, 'opt_R', bet, 'robust')
     analysisflow.connect(inputspec, 'fract_int_thr', bet, 'frac')
+    analysisflow.connect(inputspec, 'vertical_gradient', bet, 'vertical_gradient')
     analysisflow.connect(bet, 'mask_file', outputspec, 'brain_mask')
     if fmri:
         analysisflow.connect(bet, 'mask_file', applymask, 'mask_file')
