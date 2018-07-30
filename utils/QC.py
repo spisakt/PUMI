@@ -155,16 +155,16 @@ def fMRI2QC(qcname, tag="", SinkDir=".", QCDIR="QC"):
     # Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=['func', 'atlas', 'confounds']),
                         name='inputspec')
-    inputspec.inputs.atlas = globals._FSLDIR_ + '/data/atlases/HarvardOxford/HarvardOxford-cort-maxprob-thr25-2mm.nii.gz'
+    inputspec.inputs.atlas = globals._FSLDIR_ + '/data/atlases/HarvardOxford/HarvardOxford-cort-maxprob-thr25-3mm.nii.gz'
 
 
     plotfmri = pe.MapNode(interface=Function(input_names=['func', 'atlaslabels', 'confounds', 'output_file'],
                                                   output_names=['plotfile'],
                                                   function=plot.plot_fmri_qc),
                                iterfield=['func', 'confounds'],
-                               name="qc_fmri_orig")
+                               name="qc_fmri")
     plotfmri.inputs.output_file = "qc_fmri.png"
-    # default atlas works only for standardized, 2mm-resoultion data
+    # default atlas works only for standardized, 3mm-resoultion data
 
     # Save outputs which are important
     ds_qc = pe.Node(interface=io.DataSink(),

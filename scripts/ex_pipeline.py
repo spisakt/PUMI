@@ -31,8 +31,8 @@ if (len(sys.argv) > 3):
     globals._SinkDir_ = sys.argv[3]
 
 ##############################
-#_regtype_ = globals._RegType_.FSL
-_regtype_ = globals._RegType_.ANTS
+_regtype_ = globals._RegType_.FSL
+#_regtype_ = globals._RegType_.ANTS
 ##############################
 
 # create data grabber
@@ -63,8 +63,9 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
                       name="reorient_func")
 
 myanatproc = anatproc.AnatProc(stdreg=_regtype_)
-myanatproc.inputs.inputspec.bet_fract_int_thr = 0.45  # feel free to adjust, a nice bet is important!
-myanatproc.inputs.inputspec.bet_vertical_gradient = 0 # feel free to adjust, a nice bet is important!
+myanatproc.inputs.inputspec.bet_fract_int_thr = 0.3  # feel free to adjust, a nice bet is important!
+myanatproc.inputs.inputspec.bet_vertical_gradient = -0.3 # feel free to adjust, a nice bet is important!
+# try scripts/opt_bet.py to optimise these parameters
 
 mybbr = bbr.bbr_workflow()
 # Add arbitrary number of nii images wthin the same space. The default is to add csf and wm masks for anatcompcor calculation.
@@ -87,18 +88,18 @@ myfuncproc = funcproc.FuncProc()
 #create atlas matching this space
 resample_atlas = pe.Node(interface=afni.Resample(outputtype = 'NIFTI_GZ',
                                           in_file="/Users/tspisak/data/atlases/MIST/Parcellations/MIST_7.nii.gz",
-                                          master=globals._FSLDIR_ + '/data/atlases/HarvardOxford/HarvardOxford-cort-maxprob-thr25-2mm.nii.gz'),
+                                          master=globals._FSLDIR_ + '/data/standard/MNI152_T1_3mm_brain.nii.gz'),
                          name='resample_atlas') #default interpolation is nearest neighbour
 
 # standardize what you need
-myfunc2mni = transform.func2mni(stdreg=_regtype_, carpet_plot="1_original", wf_name="func2mni")
-myfunc2mni_cc = transform.func2mni(stdreg=_regtype_, carpet_plot="2_cc", wf_name="func2mni_cc")
-myfunc2mni_cc_bpf = transform.func2mni(stdreg=_regtype_, carpet_plot="3_cc_bpf", wf_name="func2mni_cc_bpf")
-myfunc2mni_cc_bpf_cens = transform.func2mni(stdreg=_regtype_, carpet_plot="4_cc_bpf_cens", wf_name="func2mni_cc_bpf_cens")
-myfunc2mni_cc_bpf_cens_mac = transform.func2mni(stdreg=_regtype_, carpet_plot="5_cc_bpf_cens_mac", wf_name="func2mni_cc_bpf_cens_mac")
+myfunc2mni = transform.func2mni(stdreg=_regtype_, carpet_plot="1_original", wf_name="func2mni_1")
+myfunc2mni_cc = transform.func2mni(stdreg=_regtype_, carpet_plot="2_cc", wf_name="func2mni_2_cc")
+myfunc2mni_cc_bpf = transform.func2mni(stdreg=_regtype_, carpet_plot="3_cc_bpf", wf_name="func2mni_3_cc_bpf")
+myfunc2mni_cc_bpf_cens = transform.func2mni(stdreg=_regtype_, carpet_plot="4_cc_bpf_cens", wf_name="func2mni_4_cc_bpf_cens")
+myfunc2mni_cc_bpf_cens_mac = transform.func2mni(stdreg=_regtype_, carpet_plot="5_cc_bpf_cens_mac", wf_name="func2mni_5_cc_bpf_cens_mac")
 
 
-totalWorkflow = nipype.Workflow('totalWorkflow')
+totalWorkflow = nipype.Workflow('preprocess_all')
 totalWorkflow.base_dir = '.'
 
 # anatomical part and func2anat
@@ -137,7 +138,6 @@ totalWorkflow.connect([
     (erode_mask, myfuncproc,
      [('out_file','inputspec.cc_noise_roi')]),
 
-
     # push func to standard space
     (myfuncproc, myfunc2mni,
      [('outputspec.func_mc', 'inputspec.func'),
@@ -146,7 +146,7 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_template', 'inputspec.reference_brain'),
+      #('outputspec.std_template', 'inputspec.reference_brain'),
       ('outputspec.brain', 'inputspec.anat')]),
     (resample_atlas, myfunc2mni,
      [('out_file', 'inputspec.atlas')]),
@@ -158,7 +158,7 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni_cc,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_template', 'inputspec.reference_brain'),
+      #('outputspec.std_template', 'inputspec.reference_brain'),
       ('outputspec.brain', 'inputspec.anat')]),
     (resample_atlas, myfunc2mni_cc,
      [('out_file', 'inputspec.atlas')]),
@@ -170,7 +170,7 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni_cc_bpf,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_template', 'inputspec.reference_brain'),
+      #('outputspec.std_template', 'inputspec.reference_brain'),
       ('outputspec.brain', 'inputspec.anat')]),
     (resample_atlas, myfunc2mni_cc_bpf,
      [('out_file', 'inputspec.atlas')]),
@@ -182,7 +182,7 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni_cc_bpf_cens,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_template', 'inputspec.reference_brain'),
+      #('outputspec.std_template', 'inputspec.reference_brain'),
       ('outputspec.brain', 'inputspec.anat')]),
     (resample_atlas, myfunc2mni_cc_bpf_cens,
      [('out_file', 'inputspec.atlas')]),
@@ -194,7 +194,7 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, myfunc2mni_cc_bpf_cens_mac,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
-      ('outputspec.std_template', 'inputspec.reference_brain'),
+      #('outputspec.std_template', 'inputspec.reference_brain'),
       ('outputspec.brain', 'inputspec.anat')]),
     (resample_atlas, myfunc2mni_cc_bpf_cens_mac,
      [('out_file', 'inputspec.atlas')]),
@@ -203,8 +203,18 @@ totalWorkflow.connect([
     ])
 
 
-
+# RUN #
+#from nipype.utils.profiler import log_nodes_cb
+#import logging
+#callback_log_path = 'run_stats.log'
+#logger = logging.getLogger('callback')
+#logger.setLevel(logging.DEBUG)
+#handler = logging.FileHandler(callback_log_path)
+#logger.addHandler(handler)
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
 totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
 totalWorkflow.write_graph('graph.dot', graph2use='colored')
 totalWorkflow.run(plugin='MultiProc')
+
+#from nipype.utils.draw_gantt_chart import generate_gantt_chart
+#generate_gantt_chart('run_stats.log', cores=8)
