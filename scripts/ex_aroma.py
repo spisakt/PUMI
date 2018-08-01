@@ -90,7 +90,9 @@ myaroma = aroma.aroma_workflow(fwhm=8)
 
 func2std = func2standard.func2mni(stdreg=globals._RegType_.FSL, wf_name='func2std')
 func2std_aroma_nonaggr = func2standard.func2mni(stdreg=globals._RegType_.FSL, wf_name='func2std_aroma_nonaggr')
+func2std_aroma_nonaggr.inputs.inputspec.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_3mm_brain.nii.gz"
 func2std_aroma_aggr = func2standard.func2mni(stdreg=globals._RegType_.FSL, wf_name='func2std_aroma_aggr')
+func2std_aroma_aggr.inputs.inputspec.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_3mm_brain.nii.gz"
 
 fmri_qc_original = qc.fMRI2QC("carpet_aroma", tag="1_orinal")
 fmri_qc_nonaggr = qc.fMRI2QC("carpet_aroma", tag="2_nonaggressive")
@@ -105,6 +107,10 @@ meanFD.inputs.axis = 0  # global mean
 
 pop_FD = pe.Node(interface=utils_convert.List2TxtFile,
                      name='pop_FD')  # TODO  sink this
+pop_FD.inputs.rownum = 0
+pop_FD.inputs.out_file = "FD.txt"
+pop_FD.inputs.filelist = True
+
 
 totalWorkflow = nipype.Workflow('exAROMA')
 totalWorkflow.base_dir = '.'
@@ -164,8 +170,6 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, func2std_aroma_nonaggr,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx')]),
-    (myanatproc, func2std_aroma_nonaggr,
-     [('outputspec.std_brain', 'inputspec.reference_brain')]),
 
     (myaroma, func2std_aroma_aggr,
      [('outputspec.aggr_denoised_file', 'inputspec.func')]),
@@ -173,8 +177,6 @@ totalWorkflow.connect([
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
     (myanatproc, func2std_aroma_aggr,
      [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx')]),
-    (myanatproc, func2std_aroma_aggr,
-     [('outputspec.std_brain', 'inputspec.reference_brain')]),
     # carpet plots!!!
     (func2std, fmri_qc_original,
      [('outputspec.func_std', 'inputspec.func')]),
