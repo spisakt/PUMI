@@ -6,7 +6,7 @@ Nipype-based neuroimaging pipelines with a modular arhitecture.
 *** **Under development** ***
 
 Currtent focus:
-- resting-state analysis
+- resting-state fMRI analysis
 - machine learning
 
 https://github.com/spisakt/PUMI/wiki
