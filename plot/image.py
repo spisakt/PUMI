@@ -78,10 +78,18 @@ def plot_fmri_qc(func, atlaslabels, confounds, output_file=None):
         # Map segmentation
         if lut is None:
             lut = np.zeros((256,), dtype='int')
-            lut[1:11] = 1
-            lut[255] = 2
-            lut[30:99] = 3
-            lut[100:201] = 4
+            #lut[1:11] = 1
+            #lut[255] = 2
+            #lut[30:99] = 3
+            #lut[100:201] = 4
+
+            lut[1] = 1
+            lut[2] = 2
+            lut[3] = 3
+            lut[4] = 4
+            lut[5] = 5
+            lut[6] = 6
+            lut[7] = 7
 
         # Apply lookup table
         newsegm = lut[seg.astype(int)]
@@ -348,9 +356,9 @@ def plot_fmri_qc(func, atlaslabels, confounds, output_file=None):
         import nibabel as nib
 
         rest_data = nib.load(rest).get_data().astype(np.float32)
-        maximum = rest_data.max()
+        #maximum = rest_data.max()
         mask_data = rest_data[:, :, :, 0]
-        mask_data[mask_data < maximum * 0.1] = 0  # 10% threshold fro DVARS!!!
+        #mask_data[mask_data ] = 0  # 10% threshold fro DVARS!!! # should be already masked...
 
         # square of relative intensity value for each voxel across
         # every timepoint

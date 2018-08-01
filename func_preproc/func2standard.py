@@ -70,18 +70,20 @@ def func2mni(stdreg, carpet_plot="", wf_name='func2mni', SinkTag="func_preproc")
 
     inputspec.inputs.atlas = globals._FSLDIR_ + '/data/atlases/HarvardOxford/HarvardOxford-cort-maxprob-thr25-2mm.nii.gz'
 
-    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
-    # TODO: does not work with the iterfiled definition for ref_file below:
+    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_3mm_brain.nii.gz" #3mm by default
+    # TODO: this does not work with the iterfiled definition for ref_file below:
     # TODO: it should be sepcified in a function argument, whether it shopuld be iterated
     #TODO_ready: ANTS
     #TODO: make resampling voxel size for func parametrizable
 
     # apply transformation martices
     if stdreg == globals._RegType_.FSL:
-        applywarp = pe.MapNode(interface=fsl.ApplyWarp(interp="spline"),
+        applywarp = pe.MapNode(interface=fsl.ApplyWarp(interp="spline", ),
                          iterfield=['in_file','field_file','premat'],
                          name='applywarp')
         myqc = qc.vol2png("func2mni", wf_name + "_FSL", overlayiterated=False)
+        myqc.inputs.slicer.image_width = 500  # 500 # for the 2mm template
+        myqc.inputs.slicer.threshold_edges = 0.1  # 0.1  # for the 2mm template
     else: #ANTs
         # source file for C3dAffineToolmust not be 4D, so we extract the one example vol
         myonevol = onevol.onevol_workflow()
@@ -99,7 +101,9 @@ def func2mni(stdreg, carpet_plot="", wf_name='func2mni', SinkTag="func_preproc")
         applywarp = pe.MapNode(interface=ants.ApplyTransforms(interpolation="BSpline", input_image_type=3),
                                iterfield=['input_image', 'transforms'],
                                name='applywarp')
-        myqc = qc.vol2png("func2mni", wf_name + "_ANTS", overlayiterated=False)
+        myqc = qc.vol2png("func2mni", wf_name + "_ANTS3", overlayiterated=False)
+        myqc.inputs.slicer.image_width = 500  # 500 # for the 2mm template
+        myqc.inputs.slicer.threshold_edges = 0.1  # 0.1  # for the 2mm template
 
 
 

@@ -6,7 +6,7 @@ Nipype-based neuroimaging pipelines with a modular arhitecture.
 *** **Under development** ***
 
 Currtent focus:
-- resting-state analysis
+- resting-state fMRI analysis
 - machine learning
 
 https://github.com/spisakt/PUMI/wiki
@@ -18,6 +18,7 @@ Requires:
 - FSL (https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/)
 - AFNI (https://afni.nimh.nih.gov)
 - ANTS (http://stnava.github.io/ANTs/)
+- nilearn (http://nilearn.github.io)
 
 Recommends:
 - porcupine (>=1.4.0) (https://timvanmourik.github.io/Porcupine/)

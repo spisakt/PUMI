@@ -117,7 +117,7 @@ def mc_workflow(SinkTag = "func_preproc",
     #                        name='lastvolnum')
 
     # Wraps command **mcflirt**
-    mcflirt = pe.MapNode(interface=fsl.MCFLIRT(interpolation="spline", stages=4),
+    mcflirt = pe.MapNode(interface=fsl.MCFLIRT(interpolation="spline"),  #, stages=4), #stages 4: more accurate but slow
                          iterfield=['in_file'], # , 'ref_vol'], # make parametrizable
                          name='mcflirt')
     #TODO set refernec volume number

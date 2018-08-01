@@ -74,7 +74,7 @@ def AnatProc(stdreg, SinkTag="anat_preproc", wf_name="anatproc"):
     if stdreg==globals._RegType_.FSL:
         myanat2mni = anat2mni.anat2mni_fsl_workflow()
     else:  # ANTS
-        myanat2mni = anat2mni.anat2mni_ants_workflow()
+        myanat2mni = anat2mni.anat2mni_ants_workflow_harcoded()  # currently hardcoded
 
     #resample 2mm-std ventricle to the actual standard space
     resample_std_ventricle = pe.Node(interface=afni.Resample(outputtype='NIFTI_GZ',
