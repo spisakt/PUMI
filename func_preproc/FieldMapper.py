@@ -1,9 +1,9 @@
 def fieldmapper(func,
                 magnitude,
                 phase,
-                TE1,
-                TE2,
-                dwell_time,
+                TE1=4.9,
+                TE2=7.3,
+                dwell_time=0.006,
                 unwarp_direction="y-",
                 SinkTag="func_fieldmapcorr",
                 wf_name="fieldmap_correction"):
