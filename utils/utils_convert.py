@@ -91,6 +91,7 @@ def list2TxtFile(in_list, filelist=True, rownum=-1, out_file='params.txt'):
     return os.getcwd() + '/' + out_file
 
 ###############################################
+# TODO: these kind of pre-defined function interfaces are dangerous, when used multiple times, with default arguments!
 
 Val2Dict = Function(input_names=['val'],
                        output_names=['dict'],
