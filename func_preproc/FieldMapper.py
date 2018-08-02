@@ -29,7 +29,7 @@ def fieldmapper(func,
     ###########################################
     # Here comes the generated code
     ###########################################
-
+asd
     # This is a Nipype generator. Warning, here be dragons.
     # !/usr/bin/env python
     import sys
