@@ -182,3 +182,44 @@ def fMRI2QC(qcname, tag="", SinkDir=".", QCDIR="QC"):
     analysisflow.connect(plotfmri, 'plotfile', ds_qc, qcname)
 
     return analysisflow
+
+def regTimeseriesQC(qcname, tag="", SinkDir=".", QCDIR="QC"):
+    import os
+    import nipype
+    import nipype.pipeline as pe
+    import nipype.interfaces.utility as utility
+    import PUMI.plot.timeseries as plot
+
+    QCDir = os.path.abspath(globals._SinkDir_ + "/" + globals._QCDir_)
+    if not os.path.exists(QCDir):
+        os.makedirs(QCDir)
+
+    if tag:
+        tag = "_" + tag
+
+    # Basic interface class generates identity mappings
+    inputspec = pe.Node(utility.IdentityInterface(fields=['timeseries', 'modules']),
+                        name='inputspec')
+
+    plotregts = pe.MapNode(interface=Function(input_names=['timeseries', 'modules', 'output_file'],
+                                                  output_names=['plotfile'],
+                                                  function=plot.plot_carpet_ts),
+                               iterfield=['timeseries'],
+                               name="qc_timeseries")
+    plotregts.inputs.output_file = "qc_timeseries.png"
+
+    # Save outputs which are important
+    ds_qc = pe.Node(interface=io.DataSink(),
+                    name='ds_qc')
+    ds_qc.inputs.base_directory = QCDir
+    ds_qc.inputs.regexp_substitutions = [("(\/)[^\/]*$", tag + ".png")]
+
+    # Create a workflow
+    analysisflow = nipype.Workflow(name=qcname + tag + '_qc')
+
+    analysisflow.connect(inputspec, 'timeseries', plotregts, 'timeseries')
+    analysisflow.connect(inputspec, 'modules', plotregts, 'modules')
+    analysisflow.connect(plotregts, 'plotfile', ds_qc, qcname)
+
+    return analysisflow
+
