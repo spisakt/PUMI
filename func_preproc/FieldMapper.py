@@ -43,7 +43,7 @@ def fieldmapper(TE1=4.9,
 
     # Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(
-                                    fields=['func',
+                                    fields=['in_file',
                                             'magnitude',
                                             'phase',
                                             'TE1',

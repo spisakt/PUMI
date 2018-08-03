@@ -40,7 +40,7 @@ totalWorkflow.connect([
     (datagrab,reorient_func,
      [('func','in_file')]),
     (reorient_func, myfm,
-     [('out_file', 'inputspec.func')]),
+     [('out_file', 'inputspec.in_file')]),
     (datagrab,myfm,
      [('phase','inputspec.phase')]),
     (datagrab,myfm,
