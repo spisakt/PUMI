@@ -107,7 +107,6 @@ def fieldmapper(TE1=4.9,
 
     myqc_orig = qc.vol2png("fm_original")
     myqc_unwarp = qc.vol2png("fm_unwarped")
-    myqc_origunwarp=qc.vol2png("fm_origunwarp")
 
     # Create a workflow to connect all those nodes
     analysisflow = nipype.Workflow(wf_name)
@@ -121,7 +120,7 @@ def fieldmapper(TE1=4.9,
     analysisflow.connect(erode2, 'out_file', fugue, 'mask_file')
     analysisflow.connect(bet, 'mask_file', erode2, 'in_file')
     analysisflow.connect(inputspec, 'dwell_time', fugue, 'dwell_time')
-    analysisflow.connect(inputspec, 'func', fugue, 'in_file')
+    analysisflow.connect(inputspec, 'in_file', fugue, 'in_file')
     analysisflow.connect(bet, 'out_file', erode, 'in_file')
     analysisflow.connect(inputspec, 'TE2', subtract, 'b')
     analysisflow.connect(inputspec, 'TE1', subtract, 'a')
@@ -130,11 +129,10 @@ def fieldmapper(TE1=4.9,
     analysisflow.connect(inputspec, 'magnitude', bet, 'in_file')
 
     analysisflow.connect(inputspec, 'magnitude', myqc_orig, 'inputspec.bg_image')
-    analysisflow.connect(inputspec, 'func', myqc_orig, 'inputspec.overlay_image')
+    analysisflow.connect(inputspec, 'in_file', myqc_orig, 'inputspec.overlay_image')
     analysisflow.connect( inputspec, 'magnitude', myqc_unwarp, 'inputspec.bg_image')
     analysisflow.connect(fugue, 'unwarped_file',myqc_unwarp, 'inputspec.overlay_image')
-    analysisflow.connect(inputspec,'func', myqc_origunwarp,'inputspec.bg_image')
-    analysisflow.connect(fugue, 'unwarped_file', myqc_origunwarp,'inputspec.overlay_image')
+
 
     # Run the workflow
     #plugin = 'MultiProc'  # adjust your desired plugin here
