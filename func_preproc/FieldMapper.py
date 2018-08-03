@@ -1,9 +1,6 @@
-def fieldmapper(func,
-                magnitude,
-                phase,
-                TE1=4.9,
+def fieldmapper(TE1=4.9,
                 TE2=7.3,
-                dwell_time=0.006,
+                dwell_time=0.00035,
                 unwarp_direction="y-",
                 SinkTag="func_fieldmapcorr",
                 wf_name="fieldmap_correction"):
@@ -29,7 +26,7 @@ def fieldmapper(func,
     ###########################################
     # Here comes the generated code
     ###########################################
-asd
+
     # This is a Nipype generator. Warning, here be dragons.
     # !/usr/bin/env python
     import sys
@@ -39,48 +36,67 @@ asd
     import nipype.interfaces.fsl as fsl
     import PUMI.utils.utils_math as utils_math
     import nipype.interfaces.io as io
+    import PUMI.utils.QC as qc
+    import PUMI.utils.utils_convert as utils_convert
 
     OutJSON = SinkDir + "/outputs.JSON"
 
     # Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(
-        fields=['func', 'magnitude', 'phase', 'TE1', 'TE2', 'dwell_time', 'unwarp_direction']),
+                                    fields=['func',
+                                            'magnitude',
+                                            'phase',
+                                            'TE1',
+                                            'TE2',
+                                            'dwell_time',
+                                            'unwarp_direction']),
                                     name='inputspec')
     #defaults:
-    inputspec.inputs.func = func
-    inputspec.inputs.magnitude = magnitude
-    inputspec.inputs.phase = phase
+    #inputspec.inputs.func = func
+    #inputspec.inputs.magnitude = magnitude
+    #inputspec.inputs.phase = phase
     inputspec.inputs.TE1 = TE1
     inputspec.inputs.TE2 = TE2
     inputspec.inputs.dwell_time = dwell_time
     inputspec.inputs.unwarp_direction = unwarp_direction
 
     # Wraps command **bet**
-    bet = pe.MapNode(interface=fsl.BET(), name='bet', iterfield=['in_file'])
+    bet = pe.MapNode(interface=fsl.BET(),
+                     name='bet',
+                     iterfield=['in_file'])
     bet.inputs.mask = True
 
     # Wraps command **fslmaths**
-    erode = pe.MapNode(interface=fsl.ErodeImage(), name='erode', iterfield=['in_file'])
+    erode = pe.MapNode(interface=fsl.ErodeImage(),
+                       name='erode',
+                       iterfield=['in_file'])
 
     # Wraps command **fslmaths**
-    erode2 = pe.MapNode(interface=fsl.ErodeImage(), name='erode2', iterfield=['in_file'])
+    erode2 = pe.MapNode(interface=fsl.ErodeImage(),
+                        name='erode2',
+                        iterfield=['in_file'])
 
     # Custom interface wrapping function SubTwo
-    subtract = pe.Node(interface=utils_math.SubTwo, name='subtract')
+    subtract = pe.Node(interface=utils_math.SubTwo,
+                       name='subtract')
 
     # Custom interface wrapping function Abs
-    abs = pe.Node(interface=utils_math.Abs, name='abs')
+    abs = pe.Node(interface=utils_math.Abs,
+                  name='abs')
 
     # Wraps command **fsl_prepare_fieldmap**
-    preparefm = pe.MapNode(interface=fsl.PrepareFieldmap(), name='preparefm',
-                                       iterfield=['in_phase', 'in_magnitude'])
+    preparefm = pe.MapNode(interface=fsl.PrepareFieldmap(),
+                           name='preparefm',
+                           iterfield=['in_phase', 'in_magnitude'])
 
     # Wraps command **fugue**
-    fugue = pe.MapNode(interface=fsl.FUGUE(), name='fugue',
-                                       iterfield=['in_file', 'fmap_in_file', 'mask_file'])
+    fugue = pe.MapNode(interface=fsl.FUGUE(),
+                       name='fugue',
+                       iterfield=['in_file', 'fmap_in_file', 'mask_file'])
 
     # Generic datasink module to store structured outputs
-    outputspec = pe.Node(interface=io.DataSink(), name='outputspec')
+    outputspec = pe.Node(interface=io.DataSink(),
+                         name='outputspec')
     outputspec.inputs.base_directory = SinkDir
     outputspec.inputs.regexp_substitutions = [("func_fieldmapcorr/_NodeName_.{13}", "")]
 
@@ -89,17 +105,13 @@ asd
     outputspec2.inputs.base_directory = SinkDir
     outputspec2.inputs.regexp_substitutions = [("_NodeName_.{13}", "")]
 
-    myqc_orig = qc.vol2png("fieldmap_correction", "original")
-    myqc_unwarp = qc.vol2png("fieldmap_correction", "unwarped")
-
-    # Very simple frontend for storing values into a JSON file.
-    #NodeHash_6000024a5820 = pe.Node(interface=io.JSONFileSink(), name='NodeName_6000024a5820')
-    #NodeHash_6000024a5820.inputs.out_file = OutJSON
+    myqc_orig = qc.vol2png("fm_original")
+    myqc_unwarp = qc.vol2png("fm_unwarped")
+    myqc_origunwarp=qc.vol2png("fm_origunwarp")
 
     # Create a workflow to connect all those nodes
     analysisflow = nipype.Workflow(wf_name)
     analysisflow.base_dir = '.'
-
     analysisflow.connect(preparefm, 'out_fieldmap', outputspec2, 'fieldmap')
     analysisflow.connect(abs, 'abs', preparefm, 'delta_TE')
     analysisflow.connect(subtract, 'dif', abs, 'x')
@@ -117,10 +129,12 @@ asd
     analysisflow.connect(erode, 'out_file', preparefm, 'in_magnitude')
     analysisflow.connect(inputspec, 'magnitude', bet, 'in_file')
 
-    analysisflow.connect(inputspec, 'func', myqc_orig, 'inputspec.bg_image')
-    analysisflow.connect(inputspec, 'magnitude', myqc_orig, 'inputspec.overlay_image')
-    analysisflow.connect(fugue, 'unwarped_file', myqc_unwarp, 'inputspec.bg_image')
-    analysisflow.connect(inputspec, 'magnitude', myqc_unwarp, 'inputspec.overlay_image')
+    analysisflow.connect(inputspec, 'magnitude', myqc_orig, 'inputspec.bg_image')
+    analysisflow.connect(inputspec, 'func', myqc_orig, 'inputspec.overlay_image')
+    analysisflow.connect( inputspec, 'magnitude', myqc_unwarp, 'inputspec.bg_image')
+    analysisflow.connect(fugue, 'unwarped_file',myqc_unwarp, 'inputspec.overlay_image')
+    analysisflow.connect(inputspec,'func', myqc_origunwarp,'inputspec.bg_image')
+    analysisflow.connect(fugue, 'unwarped_file', myqc_origunwarp,'inputspec.overlay_image')
 
     # Run the workflow
     #plugin = 'MultiProc'  # adjust your desired plugin here

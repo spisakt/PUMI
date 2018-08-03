@@ -13,14 +13,17 @@ import PUMI.func_preproc.FieldMapper as fm
 datagrab = pe.Node(nio.DataGrabber(outfields=['func',
                                               'phase',
                                               'magnitude',
-                   #                           'TE1',
-                   #                           'TE2',
-                   #                           'dwelltime'
+                                              'TE1',
+                                              'TE2',
+                                              'dwelltime'
                                                ]),
                    name='data_grabber')
 
 datagrab.inputs.base_directory = os.getcwd()  # do we need this?
-datagrab.inputs.template = "s*"  # do we need this?
+datagrab.inputs.template = "*/*"  # do we need this?
+datagrab.inputs.field_template = dict(func=sys.argv[1],
+                                      phase=sys.argv[2],
+                                      magnitude=sys.argv[3])
 datagrab.inputs.sort_filelist = True
 
 
@@ -34,20 +37,16 @@ totalWorkflow = nipype.Workflow('fm_probe')
 totalWorkflow.base_dir = '.'
 
 totalWorkflow.connect([
-    (datagrab, myfm,
-     [('func', 'inputspec.func')]),
+    (datagrab,reorient_func,
+     [('func','in_file')]),
+    (reorient_func, myfm,
+     [('out_file', 'inputspec.func')]),
     (datagrab,myfm,
      [('phase','inputspec.phase')]),
     (datagrab,myfm,
      [('magnitude','inputspec.magnitude')]),
-    #(datagrab,myfm,
-     #[('TE1','inputspec.TE1')]),
-    #(datagrab,myfm,
-     #[('TE2',"inputspec.TE2")]),
-    #(datagrab,myfm,
-    # [('dwelltime','inputspec.dwelltime')])
     ])
-asd
+
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
 totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
 totalWorkflow.write_graph('graph.dot', graph2use='colored')
