@@ -198,10 +198,11 @@ def regTimeseriesQC(qcname, tag="", SinkDir=".", QCDIR="QC"):
         tag = "_" + tag
 
     # Basic interface class generates identity mappings
-    inputspec = pe.Node(utility.IdentityInterface(fields=['timeseries', 'modules']),
+    inputspec = pe.Node(utility.IdentityInterface(fields=['timeseries', 'modules', 'atlas']),
                         name='inputspec')
+    inputspec.inputs.atlas = None
 
-    plotregts = pe.MapNode(interface=Function(input_names=['timeseries', 'modules', 'output_file'],
+    plotregts = pe.MapNode(interface=Function(input_names=['timeseries', 'modules', 'output_file', 'atlas'],
                                                   output_names=['plotfile'],
                                                   function=plot.plot_carpet_ts),
                                iterfield=['timeseries'],
@@ -218,8 +219,90 @@ def regTimeseriesQC(qcname, tag="", SinkDir=".", QCDIR="QC"):
     analysisflow = nipype.Workflow(name=qcname + tag + '_qc')
 
     analysisflow.connect(inputspec, 'timeseries', plotregts, 'timeseries')
+    analysisflow.connect(inputspec, 'atlas', plotregts, 'atlas')
     analysisflow.connect(inputspec, 'modules', plotregts, 'modules')
     analysisflow.connect(plotregts, 'plotfile', ds_qc, qcname)
 
     return analysisflow
 
+
+def matrixQC(qcname, tag="", SinkDir=".", QCDIR="QC"):
+    import os
+    import nipype
+    import nipype.pipeline as pe
+    import nipype.interfaces.utility as utility
+    import PUMI.plot.connectivity as plot
+
+    QCDir = os.path.abspath(globals._SinkDir_ + "/" + globals._QCDir_)
+    if not os.path.exists(QCDir):
+        os.makedirs(QCDir)
+
+    if tag:
+        tag = "_" + tag
+
+    # Basic interface class generates identity mappings
+    inputspec = pe.Node(utility.IdentityInterface(fields=['matrix_file', 'modules', 'atlas', 'output_file']),
+                        name='inputspec')
+    inputspec.inputs.modules = None
+    #inputspec.inputs.atlas = False
+    inputspec.inputs.output_file = "qc_matrix.png"
+
+    plt = pe.MapNode(interface=Function(input_names=['matrix_file', 'modules', 'atlas', 'output_file'],
+                                                  output_names=['plotfile'],
+                                                  function=plot.plot_matrix),
+                               iterfield=['matrix_file'],
+                               name="qc_conn_matrix")
+
+    plt_hist = pe.MapNode(interface=Function(input_names=['matrix_file', 'modules', 'atlas', 'output_file'],
+                                        output_names=['plotfile'],
+                                        function=plot.plot_conn_hist),
+                     iterfield=['matrix_file'],
+                     name="qc_conn_hist")
+
+    plt_polar = pe.MapNode(interface=Function(input_names=['matrix_file', 'modules', 'atlas', 'output_file'],
+                                             output_names=['plotfile'],
+                                             function=plot.plot_conn_polar),
+                          iterfield=['matrix_file'],
+                          name="qc_conn_polar")
+
+
+    # Save outputs which are important
+    ds_qc = pe.Node(interface=io.DataSink(),
+                    name='ds_qc')
+    ds_qc.inputs.base_directory = QCDir
+    ds_qc.inputs.regexp_substitutions = [("(\/)[^\/]*$", tag + ".png")]
+
+    # Save outputs which are important
+    ds_qc_hist = pe.Node(interface=io.DataSink(),
+                    name='ds_qc_hist')
+    ds_qc_hist.inputs.base_directory = QCDir
+    ds_qc_hist.inputs.regexp_substitutions = [("(\/)[^\/]*$", tag + ".png")]
+
+    # Save outputs which are important
+    ds_qc_polar = pe.Node(interface=io.DataSink(),
+                         name='ds_qc_polar')
+    ds_qc_polar.inputs.base_directory = QCDir
+    ds_qc_polar.inputs.regexp_substitutions = [("(\/)[^\/]*$", tag + ".png")]
+
+    # Create a workflow
+    analysisflow = nipype.Workflow(name=qcname + tag + '_qc')
+
+    analysisflow.connect(inputspec, 'matrix_file', plt, 'matrix_file')
+    analysisflow.connect(inputspec, 'output_file', plt, 'output_file')
+    analysisflow.connect(inputspec, 'modules', plt, 'modules')
+    analysisflow.connect(inputspec, 'atlas', plt, 'atlas')
+    analysisflow.connect(plt, 'plotfile', ds_qc, qcname)
+
+    analysisflow.connect(inputspec, 'matrix_file', plt_hist, 'matrix_file')
+    analysisflow.connect(inputspec, 'output_file', plt_hist, 'output_file')
+    analysisflow.connect(inputspec, 'modules', plt_hist, 'modules')
+    analysisflow.connect(inputspec, 'atlas', plt_hist, 'atlas')
+    analysisflow.connect(plt_hist, 'plotfile', ds_qc_hist, qcname + "_hist")
+
+    analysisflow.connect(inputspec, 'matrix_file', plt_polar, 'matrix_file')
+    analysisflow.connect(inputspec, 'output_file', plt_polar, 'output_file')
+    analysisflow.connect(inputspec, 'modules', plt_polar, 'modules')
+    analysisflow.connect(inputspec, 'atlas', plt_polar, 'atlas')
+    analysisflow.connect(plt_polar, 'plotfile', ds_qc_polar, qcname + "_polar")
+
+    return analysisflow

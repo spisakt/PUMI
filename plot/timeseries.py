@@ -1,7 +1,7 @@
 
 
-def plot_carpet_ts(timeseries, modules, nskip=0, size=(950, 800),
-                subplot=None, title=None, output_file="regts.png", legend=False):
+def plot_carpet_ts(timeseries, modules, atlas=None, nskip=0, size=(950, 800),
+                subplot=None, title=None, output_file="regts.png"):
     """
     Adapted from: https://github.com/poldracklab/niworkflows
 
@@ -31,30 +31,33 @@ def plot_carpet_ts(timeseries, modules, nskip=0, size=(950, 800),
     import nibabel as nb
     import pandas as pd
     import os
-
-    import matplotlib
-    matplotlib.use('agg')
     import matplotlib.pyplot as plt
     from matplotlib import gridspec as mgs
     import matplotlib.cm as cm
     from matplotlib.colors import ListedColormap
+    import PUMI.utils.globals as glb
 
     from nilearn.plotting import plot_img
-    from nilearn.signal import clean
-    from nilearn._utils import check_niimg_4d
-    from nilearn._utils.niimg import _safe_get_data
+
+    legend = False
+    if atlas:
+        legend = True
 
     # actually load data
-    timeseries = pd.read_csv(timeseries, sep="\t").transpose()
+    timeseries = pd.read_csv(timeseries, sep="\t")
+
+    #normalise all timeseries
+    v = (None, None)
+    timeseries = (timeseries - timeseries.mean()) / timeseries.std()
+    v = (-2, 2)
+    timeseries = timeseries.transpose()
 
     minimum = np.min(timeseries)
     maximum = np.max(timeseries)
     myrange = maximum - minimum
 
     modules = pd.Series(modules).values
-    lut = pd.factorize(modules)[0]
-
-    print modules
+    lut = pd.factorize(modules)[0]+1
 
     # If subplot is not defined
     if subplot is None:
@@ -66,7 +69,7 @@ def plot_carpet_ts(timeseries, modules, nskip=0, size=(950, 800),
                                      width_ratios=wratios[:2 + int(legend)],
                                      wspace=0.0)
 
-    mycolors = ListedColormap(cm.get_cmap('tab10').colors[:16][::-1])
+    mycolors = ListedColormap(cm.get_cmap('Set1').colors[:7][::-1])
 
     # Segmentation colorbar
 
@@ -75,22 +78,7 @@ def plot_carpet_ts(timeseries, modules, nskip=0, size=(950, 800),
     ax0.set_yticks([])
     ax0.set_xticks([])
 
-    lutt=pd.DataFrame({'1': lut,
-                      '2': lut,
-                      '3': lut,
-                      '4': lut,
-                      '5': lut,
-                      '6': lut,
-                      '7': lut,
-                      '8': lut,
-                      '9': lut,
-                      '10': lut,
-                      '11': lut,
-                      '12': lut,
-                      '13': lut,
-                      '14': lut,
-                      '15': lut,
-                      '16': lut,})
+    lutt=pd.DataFrame({'1': lut})
     ax0.imshow(lutt, interpolation='none', aspect='auto',
                cmap=mycolors, vmin=0, vmax=8)
 
@@ -101,7 +89,6 @@ def plot_carpet_ts(timeseries, modules, nskip=0, size=(950, 800),
 
 
     # Carpet plot
-    v = (None, None)
     ax1 = plt.subplot(gs[1])
     ax1.imshow(timeseries, interpolation='nearest', aspect='auto', cmap='gray',
                vmin=v[0], vmax=v[1])
@@ -131,21 +118,27 @@ def plot_carpet_ts(timeseries, modules, nskip=0, size=(950, 800),
     ax1.spines["left"].set_color('none')
     ax1.spines["left"].set_visible(False)
 
-    #if legend:
-    #    gslegend = mgs.GridSpecFromSubplotSpec(
-    #        5, 1, subplot_spec=gs[2], wspace=0.0, hspace=0.0)
-    #    epiavg = func_data.mean(3)
-    #    epinii = nb.Nifti1Image(epiavg, img_nii.affine, img_nii.header)
-    #    segnii = nb.Nifti1Image(lut[atlaslabels.astype(int)], epinii.affine, epinii.header)
-    #    segnii.set_data_dtype('uint8')
+    if legend:
+        gslegend = mgs.GridSpecFromSubplotSpec(
+            5, 1, subplot_spec=gs[2], wspace=0.0, hspace=0.0)
 
-    #    nslices = epiavg.shape[-1]
-    #    coords = np.linspace(int(0.10 * nslices), int(0.95 * nslices), 5).astype(np.uint8)
-    #    for i, c in enumerate(coords.tolist()):
-    #        ax2 = plt.subplot(gslegend[i])
-    #        plot_img(segnii, bg_img=epinii, axes=ax2, display_mode='z',
-    #                 annotate=False, cut_coords=[c], threshold=0.1, cmap=mycolors,
-    #                 interpolation='nearest')
+        background_file = glb._FSLDIR_ + "/data/standard/MNI152_T1_3mm_brain.nii.gz" #TODO: works only for 3mm atlas
+        background = nb.load(background_file)
+        atlas = nb.load(atlas)
+
+        nslices = background.shape[-1]
+        #coords = np.linspace(int(0 * nslices), int(0.99 * nslices), 5).astype(np.uint8)
+        coords = [-40, 20, 0, 20, 40] #works in MNI space
+        lut2 = lut
+        lut2 = np.array([0] + lut2.tolist())
+
+        relabeled=lut2[np.array(atlas.get_data(), dtype=int)]
+        atl = nb.Nifti1Image(relabeled, atlas.get_affine())
+        for i, c in enumerate(coords):
+            ax2 = plt.subplot(gslegend[i])
+            plot_img(atl, bg_img=background, axes=ax2, display_mode='z',
+                     annotate=False, cut_coords=[c], threshold=0.1, cmap=mycolors,
+                     interpolation='nearest', vmin=1, vmax=7)
 
     if output_file is not None:
         figure = plt.gcf()

@@ -8,6 +8,7 @@ import nipype
 import nipype.pipeline as pe
 import nipype.interfaces.io as nio
 import PUMI.connectivity.TimeseriesExtractor as tsext
+import PUMI.connectivity.NetworkBuilder as nw
 import PUMI.utils.globals as globals
 
 # parse command line arguments
@@ -45,9 +46,17 @@ myextract.inputs.inputspec.atlas_file = _ATLAS_FILE
 myextract.inputs.inputspec.labels = _ATLAS_LABELS
 myextract.inputs.inputspec.modules = _ATLAS_MODULES
 
+
+measure = "tangent"
+mynetmat = nw.build_netmat(wf_name=measure.replace(" ", "_"))
+mynetmat.inputs.inputspec.measure = measure
+
 totalWorkflow = pe.Workflow('ex_graph')
-totalWorkflow.base_dir="."
+totalWorkflow.base_dir = "."
 totalWorkflow.connect(datagrab, 'std_func', myextract, 'inputspec.std_func')
+totalWorkflow.connect(myextract, 'outputspec.timeseries_file', mynetmat, 'inputspec.timeseries')
+totalWorkflow.connect(myextract, 'outputspec.reordered_modules', mynetmat, 'inputspec.modules')
+totalWorkflow.connect(myextract, 'outputspec.relabelled_atlas_file', mynetmat, 'inputspec.atlas')
 
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
 totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)

@@ -1128,6 +1128,110 @@
         "web_url": "", 
         "name": "utils_math.SumList"
       }
-    }
+    },
+    {
+      "category": [
+        "PUMI", 
+        "anat_preproc"
+      ], 
+      "import": "import PUMI.func_preproc.SliceTimer as Anatproc", 
+      "ports": [
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "SinkDir"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "SinkDir", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "anat"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "anat", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "SinkTag"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "SinkTag", 
+          "editable": true, 
+          "visible": true, 
+          "output": false, 
+          "input": true
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "anat_brain"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "anat_brain", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }, 
+        {
+          "code": [
+            {
+              "argument": {
+                "name": "anat_std"
+              }, 
+              "language": "Nipype"
+            }
+          ], 
+          "name": "anat_std", 
+          "editable": false, 
+          "visible": true, 
+          "output": true, 
+          "input": false
+        }
+      ], 
+      "title": {
+        "code": [
+          {
+            "comment": "Custom interface wrapping function WorkFlow", 
+            "argument": {
+              "import": "import PUMI.func_preproc.SliceTimer as SliceTimer", 
+              "name": "SliceTimer.WorkFlow"
+            }, 
+            "language": "Nipype"
+          }, 
+          {
+            "argument": {
+              "name": "PUMI, Anatproc"
+            }, 
+            "language": "Docker"
+          }
+        ], 
+        "web_url": "", 
+        "name": "Anatproc.Workflow"
+      }
+    }, 
   ]
 }

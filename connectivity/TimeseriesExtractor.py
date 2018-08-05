@@ -1,9 +1,3 @@
-from sklearn.externals import joblib
-import numpy as np
-import pandas as pd
-from nilearn.connectome import vec_to_sym_matrix
-from nilearn import plotting
-
 def mist_modules(mist_directory, resolution="122"):
     # possible values for resolution: s7,s12,s20,s36,s64,s122,sROI,sATOM
     import pandas as pd
@@ -18,7 +12,7 @@ def mist_modules(mist_directory, resolution="122"):
     mist_s7_filename = mist_directory + '/' + 'Parcel_Information/MIST_7.csv'
     mist_s7 = pd.read_csv(mist_s7_filename, sep=";")
 
-    labels =  mist_s7.loc[modul_indices-1, ['roi', 'label']].reset_index()
+    labels = mist_s7.loc[modul_indices-1, ['roi', 'label']].reset_index()
 
     return labels['label'].values.tolist()
 
@@ -54,17 +48,23 @@ def relabel_atlas(atlas_file, modules, labels):
     if len(img.shape) != 3:
         raise Exception("relabeling does not work for probability maps!")
 
-    lut = np.array([0] + reordered.index.values.tolist())
+    lut = reordered.reset_index().sort_values(by="index").index.values + 1
+    lut = np.array([0] + lut.tolist())
+    # maybe this is a bit complicated, but believe me it does what it should
 
     data = img.get_data()
-    newdata=lut[np.array(data, dtype=int)] # apply lookup table to swap labels
+    newdata = lut[np.array(data, dtype=int)]  # apply lookup table to swap labels
     #newdata=np.all(lut[data.astype(int)] == np.take(lut, data.astype(int)))
 
     img = nib.Nifti1Image(newdata, img.get_affine())
     nib.save(img, 'relabeled_atlas.nii.gz')
 
-    return os.path.join(os.getcwd(), 'relabeled_atlas.nii.gz'), reordered['modules'].values.tolist(), reordered['labels'].values.tolist()
-    #return relabeled atlas labelmap file, reordered module names, reordered labels (region names)
+    out = reordered.reset_index()
+    out.index = out.index + 1
+    out.to_csv(r'newlabels.tsv', sep='\t')
+
+    return os.path.join(os.getcwd(), 'relabeled_atlas.nii.gz'), reordered['modules'].values.tolist(), reordered['labels'].values.tolist(), os.path.join(os.getcwd(), 'newlabels.tsv')
+    #return relabeled atlas labelmap file, reordered module names, reordered labels (region names), newlabels_file
 
 def extract_timeseries(SinkTag="connectivity", wf_name="extract_timeseries", modularise=True):
     ########################################################################
@@ -94,9 +94,20 @@ def extract_timeseries(SinkTag="connectivity", wf_name="extract_timeseries", mod
     # re-label atlas, so that regions corresponding to the same modules follow each other
     if modularise:
         relabel_atls = pe.Node(interface=Function(input_names=['atlas_file', 'modules', 'labels'],
-                       output_names=['relabelled_atlas_file', 'reordered_modules', 'reordered_labels'],
+                       output_names=['relabelled_atlas_file', 'reordered_modules', 'reordered_labels', 'newlabels_file'],
                        function=relabel_atlas),
                                 name='relabel_atlas')
+        # Save outputs which are important
+        ds_nii = pe.Node(interface=io.DataSink(),
+                         name='ds_relabeled_atlas')
+        ds_nii.inputs.base_directory = SinkDir
+        ds_nii.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
+
+        # Save outputs which are important
+        ds_newlabels = pe.Node(interface=io.DataSink(),
+                         name='ds_newlabels')
+        ds_newlabels.inputs.base_directory = SinkDir
+        ds_newlabels.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".tsv")]
 
 
     extract_timesereies = pe.MapNode(interface=learn.SignalExtraction(detrend=False),
@@ -112,7 +123,7 @@ def extract_timeseries(SinkTag="connectivity", wf_name="extract_timeseries", mod
     #QC
     timeseries_qc = qc.regTimeseriesQC("regional_timeseries", tag=wf_name)
 
-    outputspec = pe.Node(utility.IdentityInterface(fields=['timeseries_file']),
+    outputspec = pe.Node(utility.IdentityInterface(fields=['timeseries_file', 'relabelled_atlas_file', 'reordered_modules', 'reordered_labels']),
                          name='outputspec')
 
     # Create workflow
@@ -126,15 +137,26 @@ def extract_timeseries(SinkTag="connectivity", wf_name="extract_timeseries", mod
         analysisflow.connect(relabel_atls, 'relabelled_atlas_file', extract_timesereies, 'label_files')
         analysisflow.connect(relabel_atls, 'reordered_labels', extract_timesereies, 'class_labels')
         analysisflow.connect(relabel_atls, 'reordered_modules', timeseries_qc, 'inputspec.modules')
+        analysisflow.connect(relabel_atls, 'relabelled_atlas_file', timeseries_qc, 'inputspec.atlas')
+        analysisflow.connect(relabel_atls, 'relabelled_atlas_file', ds_nii, 'atlas_relabeled')
+        analysisflow.connect(relabel_atls, 'newlabels_file', ds_newlabels, 'atlas_relabeled')
+        analysisflow.connect(relabel_atls, 'relabelled_atlas_file', outputspec, 'relabelled_atlas_file')
+        analysisflow.connect(relabel_atls, 'reordered_labels', outputspec, 'reordered_labels')
+        analysisflow.connect(relabel_atls, 'reordered_modules', outputspec, 'reordered_modules')
     else:
         analysisflow.connect(inputspec, 'atlas_file', extract_timesereies, 'label_files')
         analysisflow.connect(inputspec, 'labels', extract_timesereies, 'class_labels')
         analysisflow.connect(inputspec, 'modules', timeseries_qc, 'inputspec.modules')
+        analysisflow.connect(inputspec, 'atlas_file', timeseries_qc, 'inputspec.atlas')
+        analysisflow.connect(inputspec, 'atlas_file', outputspec, 'relabelled_atlas_file')
+        analysisflow.connect(inputspec, 'labels', outputspec, 'reordered_labels')
+        analysisflow.connect(inputspec, 'modules', outputspec, 'reordered_modules')
 
     analysisflow.connect(extract_timesereies, 'out_file', ds_txt, 'regional_timeseries')
     analysisflow.connect(extract_timesereies, 'out_file', timeseries_qc, 'inputspec.timeseries')
 
     analysisflow.connect(extract_timesereies, 'out_file', outputspec, 'timeseries_file')
+
 
     return analysisflow
 
