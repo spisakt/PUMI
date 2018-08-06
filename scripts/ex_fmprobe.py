@@ -31,7 +31,10 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
                       iterfield=['in_file'],
                       name="reorient_func")
 
-myfm=fm.fieldmapper()
+myfm=fm.fieldmapper(TE1=4.9,
+                TE2=7.3,
+                dwell_time=0.00035,
+                    unwarp_direction="y-")
 
 totalWorkflow = nipype.Workflow('fm_probe')
 totalWorkflow.base_dir = '.'
