@@ -105,8 +105,8 @@ def fieldmapper(TE1=4.9,
     outputspec2.inputs.base_directory = SinkDir
     outputspec2.inputs.regexp_substitutions = [("_NodeName_.{13}", "")]
 
-    myqc_orig = qc.vol2png("fm_original")
-    myqc_unwarp = qc.vol2png("fm_unwarped")
+    myqc_orig = qc.vol2png("fielmap_correction", tag="original")
+    myqc_unwarp = qc.vol2png("fielmap_correction", tag="unwarped")
 
     # Create a workflow to connect all those nodes
     analysisflow = nipype.Workflow(wf_name)
