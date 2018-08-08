@@ -49,19 +49,32 @@ def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation"):
         os.makedirs(SinkDir)
 
     #Basic interface class generates identity mappings
-    inputspec = pe.Node(utility.IdentityInterface(fields=['brain']),
+    inputspec = pe.Node(utility.IdentityInterface(fields=['brain'
+                                                           # 'stand2anat_xfm',
+                                                           # 'priorprob'
+                                                          # 'stand_csf',
+                                                          # 'stand_gm',
+                                                          # 'stand_wm'
+                                                          ]),
                         name='inputspec')
-
-
+    inputspec.inputs.priorprob=[globals._FSLDIR_ + "/data/standard/tissuepriors/avg152T1_csf.hdr",
+                                globals._FSLDIR_ + "/data/standard/tissuepriors/avg152T1_gm.hdr",
+                                globals._FSLDIR_ + "/data/standard/tissuepriors/avg152T1_wm.hdr"]
+    # inputspec.inputs.stand_csf=globals._FSLDIR_ + "/data/standard/tissuepriors/avg152T1_csf.hdr"
+    # inputspec.inputs.stand_gm=globals._FSLDIR_ + "/data/standard/tissuepriors/avg152T1_gm.hdr"
+    # inputspec.inputs.stand_wm=globals._FSLDIR_ + "/data/standard/tissuepriors/avg152T1_wm.hdr"
     # TODO: use prior probabilioty maps
     # Wraps command **fast**
     fast = pe.MapNode(interface=fsl.FAST(),
-                      iterfield=['in_files'],
+                      iterfield=['in_files'
+                                 # 'init_transform','other_priors'
+                                 ],
                       name='fast')
     fast.inputs.img_type = 1
     fast.inputs.segments = True
     fast.inputs.probability_maps = True
     fast.inputs.out_basename = 'fast_'
+
 
 
     myqc = qc.vol2png("tissue_segmentation", overlay=False)
@@ -93,6 +106,12 @@ def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation"):
     analysisflow = nipype.Workflow(wf_name)
     analysisflow.base_dir = '.'
     analysisflow.connect(inputspec, 'brain', fast, 'in_files')
+    # analysisflow.connect(inputspec, 'stand2anat_xfm',fast, 'init_transform ')
+    # analysisflow.connect(inputspec, 'priorprob', fast,'other_priors')
+    # analysisflow.connect(inputspec, 'stand_csf' ,fast,('other_priors', pickindex, 0))
+    # analysisflow.connect(inputspec, 'stand_gm' ,fast,('other_priors', pickindex, 1))
+    # analysisflow.connect(inputspec, 'stand_wm' ,fast,('other_priors', pickindex, 2))
+
     #nalysisflow.connect(fast, 'probability_maps', outputspec, 'probability_maps')
     analysisflow.connect(fast, ('probability_maps', pickindex, 0), outputspec, 'probmap_csf')
     analysisflow.connect(fast, ('probability_maps', pickindex, 1), outputspec, 'probmap_gm')

@@ -57,13 +57,14 @@ def anat2mni_fsl_workflow(SinkTag="anat_preproc", wf_name="anat2mni_fsl"):
                                                           'reference_brain',
                                                           'reference_skull',
                                                           'ref_mask',
-                                                          'fnirt_config']),
+                                                          'fnirt_config'
+                                                          ]),
                         name='inputspec')
 
     inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm_brain.nii.gz"
     inputspec.inputs.reference_skull = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm.nii.gz"
     inputspec.inputs.ref_mask = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm_brain_mask_dil.nii.gz"
-    #inputspec.inputs.fnirt_config = "T1_2_MNI152_1mm"
+    # inputspec.inputs.fnirt_config = "T1_2_MNI152_2mm"
 
 
     # Linear registration node
