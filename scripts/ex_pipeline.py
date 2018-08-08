@@ -74,11 +74,10 @@ add_masks = pe.MapNode(fsl.ImageMaths(op_string=' -add'),
                        iterfield=['in_file', 'in_file2'],
                        name="addimgs")
 
-# TODO: erode compcor noise mask!!!!
+# TODO_ready: erode compcor noise mask!!!!
 erode_mask = pe.MapNode(fsl.ErodeImage(),
                         iterfield=['in_file'],
                         name="erode_compcor_mask")
-# TODO: add skull voxels??
 
 def pickindex(vec, i):
     return [x[i] for x in vec]

@@ -6,7 +6,7 @@ from nipype.interfaces.utility import Function
 import os
 import PUMI.utils.globals as globals
 
-# TODO: its not really .png, its .ppm
+# TODO_ready: its not really .png, its .ppm
 # HINT: you can try to put various qc images in the same folder by using the tag parameter, like e.g. in IcaAroma.py
 def vol2png(qcname, tag="", overlay=True, overlayiterated=True):
 
@@ -84,6 +84,7 @@ def timecourse2png(qcname, tag="", type=TsPlotType.ALL, SinkDir=".", QCDIR="QC")
                           iterfield=['in_file'],
                           name='voxroi')
         #TODO add voxel coordinates
+        # TODO test
         def setInputs(x,y,z):
             return '-roi '\
                            + str(x) + ' 1 '\

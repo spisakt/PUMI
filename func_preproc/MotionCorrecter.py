@@ -78,6 +78,7 @@ def mc_workflow(SinkTag = "func_preproc",
 
     """
     #TODO maximum displacement file is a default output in AFNI 3dvolreg, however, in FSL McFLIRT I am not sure if this is equal to the rms_files output
+    # TODO nipype has the ability to calculate FD
     # import relevant packages
     import sys
     import os

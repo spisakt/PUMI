@@ -49,32 +49,36 @@ def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation"):
         os.makedirs(SinkDir)
 
     #Basic interface class generates identity mappings
-    inputspec = pe.Node(utility.IdentityInterface(fields=['brain'
-                                                           # 'stand2anat_xfm',
-                                                           # 'priorprob'
+    inputspec = pe.Node(utility.IdentityInterface(fields=['brain',
+                                                           'stand2anat_xfm',
+                                                           'priorprob'
                                                           # 'stand_csf',
                                                           # 'stand_gm',
                                                           # 'stand_wm'
                                                           ]),
                         name='inputspec')
-    inputspec.inputs.priorprob=[globals._FSLDIR_ + "/data/standard/tissuepriors/avg152T1_csf.hdr",
-                                globals._FSLDIR_ + "/data/standard/tissuepriors/avg152T1_gm.hdr",
-                                globals._FSLDIR_ + "/data/standard/tissuepriors/avg152T1_wm.hdr"]
+    #TODO set standard mask to 2mm
+    inputspec.inputs.priorprob=[globals._FSLDIR_ + '/MNI152_T1_2mm_VentricleMask.nii.gz',
+                                globals._FSLDIR_ + '/MNI152_T1_2mm_VentricleMask.nii.gz',
+                                globals._FSLDIR_ + '/MNI152_T1_2mm_VentricleMask.nii.gz']
+    inputspec.inputs.stand2anat_xfm='/home/analyser/Documents/PAINTER/probewith2subj/preprocess_solvetodos/anat2mni_fsl/inv_linear_reg0_xfm/mapflow/_inv_linear_reg0_xfm0/anat_brain_flirt_inv.mat'
+                                # globals._FSLDIR_ + '/data/standard/tissuepriors/avg152T1_gray.img',
+                                # globals._FSLDIR_ + '/data/standard/tissuepriors/avg152T1_white.img']
     # inputspec.inputs.stand_csf=globals._FSLDIR_ + "/data/standard/tissuepriors/avg152T1_csf.hdr"
     # inputspec.inputs.stand_gm=globals._FSLDIR_ + "/data/standard/tissuepriors/avg152T1_gm.hdr"
     # inputspec.inputs.stand_wm=globals._FSLDIR_ + "/data/standard/tissuepriors/avg152T1_wm.hdr"
     # TODO: use prior probabilioty maps
     # Wraps command **fast**
     fast = pe.MapNode(interface=fsl.FAST(),
-                      iterfield=['in_files'
-                                 # 'init_transform','other_priors'
+                      iterfield=['in_files',
+                                 'init_transform'
+                          # ,'other_priors'
                                  ],
                       name='fast')
     fast.inputs.img_type = 1
     fast.inputs.segments = True
     fast.inputs.probability_maps = True
     fast.inputs.out_basename = 'fast_'
-
 
 
     myqc = qc.vol2png("tissue_segmentation", overlay=False)
@@ -106,7 +110,7 @@ def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation"):
     analysisflow = nipype.Workflow(wf_name)
     analysisflow.base_dir = '.'
     analysisflow.connect(inputspec, 'brain', fast, 'in_files')
-    # analysisflow.connect(inputspec, 'stand2anat_xfm',fast, 'init_transform ')
+    analysisflow.connect(inputspec, 'stand2anat_xfm',fast, 'init_transform ')
     # analysisflow.connect(inputspec, 'priorprob', fast,'other_priors')
     # analysisflow.connect(inputspec, 'stand_csf' ,fast,('other_priors', pickindex, 0))
     # analysisflow.connect(inputspec, 'stand_gm' ,fast,('other_priors', pickindex, 1))

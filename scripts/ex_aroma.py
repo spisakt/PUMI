@@ -70,16 +70,6 @@ mybet = pe.MapNode(interface=fsl.BET(frac=0.3, mask=True),
                    iterfield=['in_file'],
                    name="func_bet")
 
-# Get TR value from header
-#TRvalue = pe.MapNode(interface=info_get.TR,
-#                     iterfield=['in_file'],
-#                     name='TRvalue')
-
-# highpass-filter - no, we dont need it
-#tempfilt = pe.MapNode(interface=afni.Bandpass(highpass=0.008,  # TODO: parametrize hpf threshold
-#                            outputtype='NIFTI_GZ', despike=False, no_detrend=True, notrans=True),
-#                      iterfield=['in_file', 'tr'],
-#                      name="highpass_filter")
 
 scale_glob_4d = pe.MapNode(interface=fsl.ImageMaths(op_string="-ing 1000"),
                            iterfield=['in_file'],
