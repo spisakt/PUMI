@@ -70,7 +70,8 @@ def datacens_workflow(SinkTag="func_preproc", wf_name="data_censoring"):
                         name='inputspec')
     inputspec.inputs.threshold = 5
 
-    #TODO check CPAC.generate_motion_statistics.generate_motion_statistics script. It may use the FD of Jenkinson to index volumes which violate the upper threhold limit, no matter what we set.
+    #TODO_ready check CPAC.generate_motion_statistics.generate_motion_statistics script. It may use the FD of Jenkinson to index volumes which violate the upper threhold limit, no matter what we set.
+    # - we use the power method to calculate FD
     # Determine the indices of the upper part (which is defined by the threshold, deafult 5%) of values based on their FD values
     calc_upprperc = pe.MapNode(utility.Function(input_names=['in_file',
                                                         'threshold'],
@@ -103,7 +104,7 @@ def datacens_workflow(SinkTag="func_preproc", wf_name="data_censoring"):
     ds.inputs.base_directory=SinkDir
 
 
-    #TODO: some plot for qualitiy checking
+    #TODO_ready: some plot for qualitiy checking
 
     # Create workflow
     analysisflow = pe.Workflow(wf_name)
