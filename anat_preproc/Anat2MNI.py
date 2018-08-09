@@ -193,7 +193,7 @@ def anat2mni_ants_workflow_nipype(SinkTag="anat_preproc", wf_name="anat2mni_ants
                                                           'reference_skull']),
                         name='inputspec')
 
-    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz" #TODO: 1 or 2mm???
+    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz" #TODO_ready: 1 or 2mm???
     inputspec.inputs.reference_skull = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm.nii.gz"
 
     # Multi-stage registration node with ANTS
@@ -252,7 +252,7 @@ def anat2mni_ants_workflow_nipype(SinkTag="anat_preproc", wf_name="anat2mni_ants
 
     # Create png images for quality check
     myqc = qc.vol2png("anat2mni", "ANTS3", overlayiterated=False)
-    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz" #TODO: 1 or 2mm???
+    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz" #TODO_ready: 1 or 2mm???
     myqc.inputs.slicer.image_width = 500 # 5000 # for the 1mm template
     myqc.inputs.slicer.threshold_edges = 0.1 # 0.1  # for the 1mm template
 
@@ -336,8 +336,8 @@ def anat2mni_ants_workflow_harcoded(SinkTag="anat_preproc", wf_name="anat2mni_an
                                                           'reference_skull']),
                         name='inputspec')
 
-    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm_brain.nii.gz" #TODO: 1 or 2mm???
-    inputspec.inputs.reference_skull = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm.nii.gz"
+    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz" #TODO_ready: 1 or 2mm???
+    inputspec.inputs.reference_skull = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm.nii.gz"
 
     # Multi-stage registration node with ANTS
     reg = pe.MapNode(interface=Function(input_names=['anatomical_brain',
@@ -351,14 +351,24 @@ def anat2mni_ants_workflow_harcoded(SinkTag="anat_preproc", wf_name="anat2mni_an
                      iterfield=['anatomical_brain', 'anatomical_skull'],
                      name="ANTS_hardcoded")
 
+    # Calculate linear transformation with FSL. This matrix has to be used in segmentation with fast if priors are set. (the default).
+    # Linear registration node
+    linear_reg = pe.MapNode(interface=fsl.FLIRT(),
+                         iterfield=['in_file'],
+                         name='linear_reg_0')
+    linear_reg.inputs.cost = 'corratio'
 
-
+    # Calculate the invers of the linear transformation
+    inv_flirt_xfm = pe.MapNode(interface=fsl.utils.ConvertXFM(),
+                               iterfield=['in_file'],
+                               name='inv_linear_reg0_xfm')
+    inv_flirt_xfm.inputs.invert_xfm = True
 
     #  # or hardcoded_reg_cpac
 
     # Create png images for quality check
     myqc = qc.vol2png("anat2mni", "ANTS2_cpac", overlayiterated=False)
-    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm_brain.nii.gz" #TODO: 1 or 2mm???
+    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz" #TODO_ready: 1 or 2mm???
     myqc.inputs.slicer.image_width = 1500  # 5000 # for the 1mm template
     myqc.inputs.slicer.threshold_edges = 0.09  # 0.1  # for the 1mm template
 
@@ -381,6 +391,11 @@ def anat2mni_ants_workflow_harcoded(SinkTag="anat_preproc", wf_name="anat2mni_an
 
     # Create workflow nad connect nodes
     analysisflow = pe.Workflow(name=wf_name)
+    # FSL part for the transformation matrix
+    analysisflow.connect(inputspec, 'brain',linear_reg, 'in_file')
+    analysisflow.connect(inputspec, 'reference_brain',linear_reg, 'reference')
+    analysisflow.connect(linear_reg, 'out_matrix_file',inv_flirt_xfm, 'in_file')
+    analysisflow.connect(inv_flirt_xfm, 'out_file',outputspec, 'invlinear_xfm')
 
     analysisflow.connect(inputspec, 'reference_skull', reg, 'reference_skull')
     analysisflow.connect(inputspec, 'reference_brain', reg, 'reference_brain')

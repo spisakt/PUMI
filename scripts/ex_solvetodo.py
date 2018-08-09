@@ -45,18 +45,13 @@ SinkDir = os.path.abspath(globals._SinkDir_ + "/" + "anat_preproc")
     # if not os.path.exists(SinkDir):
     #     os.makedirs(SinkDir)
 # Basic interface class generates identity mappings
-inputspec = pe.Node(utility.IdentityInterface(fields=['anat',
-                                                          'bet_vertical_gradient',
-                                                          'bet_fract_int_thr']),
-                        name='inputspec')
 
-inputspec.inputs.bet_fract_int_thr = globals._fsl_bet_fract_int_thr_anat_
-inputspec.inputs.bet_vertical_gradient = globals._fsl_bet_vertical_gradient_
 
  # build the actual pipeline
-mybet = bet.bet_workflow()
-myfast = fast.fast_workflow()
-myanat2mni = anat2mni.anat2mni_fsl_workflow()
+myanatproc = anatproc.AnatProc(stdreg=_regtype_)
+myanatproc.inputs.inputspec.bet_fract_int_thr = 0.3  # feel free to adjust, a nice bet is important!
+myanatproc.inputs.inputspec.bet_vertical_gradient = -0.3 # feel free to adjust, a nice bet is important!
+# try scripts/opt_bet.py to optimise these parameters
 
 ds = pe.Node(interface=io.DataSink(), name='ds')
 ds.inputs.base_directory = SinkDir
@@ -69,14 +64,14 @@ totalWorkflow.base_dir = '.'
 
 # anatomical part and func2anat
 totalWorkflow.connect([
-    (datagrab, mybet,
-        [('struct', 'inputspec.in_file')]),
-    (mybet, myfast,
-         [('outputspec.brain', 'inputspec.brain')]),
-    (mybet, myanat2mni,
-         [('outputspec.brain', 'inputspec.brain')]),
-    (datagrab, myanat2mni,
-         [('struct', 'inputspec.skull')])
+    (datagrab, myanatproc,
+        [('struct', 'inputspec.anat')])
+    # (mybet, myfast,
+    #      [('outputspec.brain', 'inputspec.brain')]),
+    # (mybet, myanat2mni,
+    #      [('outputspec.brain', 'inputspec.brain')]),
+    # (datagrab, myanat2mni,
+    #      [('struct', 'inputspec.skull')]),
     # (myanat2mni, myfast,
     #      [('outputspec.invlinear_xfm', 'inputspec.stand2anat_xfm')])
     # (myfast, ds,
@@ -101,7 +96,7 @@ totalWorkflow.connect([
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
 totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
 totalWorkflow.write_graph('graph.dot', graph2use='colored')
-totalWorkflow.run()
+totalWorkflow.run(plugin='MultiProc')
 
 #from nipype.utils.draw_gantt_chart import generate_gantt_chart
 #generate_gantt_chart('run_stats.log', cores=8)

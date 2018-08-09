@@ -75,7 +75,7 @@ def AnatProc(stdreg, SinkTag="anat_preproc", wf_name="anatproc"):
         myanat2mni = anat2mni.anat2mni_fsl_workflow()
     else:  # ANTS
         myanat2mni = anat2mni.anat2mni_ants_workflow_harcoded()  # currently hardcoded
-        #TODO set fsl linear reg matrix here
+        #TODO_read set fsl linear reg matrix here: the anat2mni_ants_workflow_harcoded contains has the output
 
     #resample 2mm-std ventricle to the actual standard space
     resample_std_ventricle = pe.Node(interface=afni.Resample(outputtype='NIFTI_GZ',
@@ -128,6 +128,8 @@ def AnatProc(stdreg, SinkTag="anat_preproc", wf_name="anatproc"):
           ('bet_vertical_gradient', 'inputspec.vertical_gradient')]),
         (mybet, myfast,
          [('outputspec.brain', 'inputspec.brain')]),
+        (myanat2mni, myfast,
+         [('outputspec.invlinear_xfm','inputspec.stand2anat_xfm')]),
         (mybet, myanat2mni,
          [('outputspec.brain', 'inputspec.brain')]),
         (inputspec, myanat2mni,
