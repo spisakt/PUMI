@@ -50,7 +50,7 @@ def FuncProc(stdrefvol,SinkTag="func_preproc", wf_name="funcproc"):
     # build the actual pipeline
     #myonevol = onevol.onevol_workflow(SinkDir=SinkDir)
     mybet = bet.bet_workflow(SinkTag="func_preproc", fmri=True, wf_name="brain_extraction_func")
-    mymc = mc.mc_workflow(referencevol=stdrefvol)
+    mymc = mc.mc_workflow(reference_vol=stdrefvol)
     mycmpcor = cmpcor.compcor_workflow()
     myconc = conc.concat_workflow(numconcat=2)
     mynuisscor = nuisscorr.nuissremov_workflow()

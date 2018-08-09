@@ -22,7 +22,7 @@ def get_scan_info(in_file):
     TR = header['pixdim'][4]
     return float(TR)
 
-def get_idx(in_files,refvolnumb, stop_idx=None, start_idx=None):
+def get_idx(in_files,refvolnumb=1, stop_idx=None, start_idx=None):
 
     """
     Adapted from C-PAC (https://github.com/FCP-INDI/C-PAC)

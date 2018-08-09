@@ -61,9 +61,9 @@ def anat2mni_fsl_workflow(SinkTag="anat_preproc", wf_name="anat2mni_fsl"):
                                                           ]),
                         name='inputspec')
 
-    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
-    inputspec.inputs.reference_skull = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm.nii.gz"
-    inputspec.inputs.ref_mask = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain_mask_dil.nii.gz"
+    inputspec.inputs.reference_brain = globals._FSLDIR_ + globals._brainref
+    inputspec.inputs.reference_skull = globals._FSLDIR_ + globals._headref
+    inputspec.inputs.ref_mask = globals._FSLDIR_ + globals._brainref_mask
     # inputspec.inputs.fnirt_config = "T1_2_MNI152_2mm"
 
 
@@ -98,7 +98,7 @@ def anat2mni_fsl_workflow(SinkTag="anat_preproc", wf_name="anat2mni_fsl"):
 
     # Create png images for quality check
     myqc = qc.vol2png("anat2mni", "FSL2", overlayiterated=False)
-    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
+    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + globals._brainref
     myqc.inputs.slicer.image_width = 500
     myqc.inputs.slicer.threshold_edges = 0.1
 
@@ -193,8 +193,8 @@ def anat2mni_ants_workflow_nipype(SinkTag="anat_preproc", wf_name="anat2mni_ants
                                                           'reference_skull']),
                         name='inputspec')
 
-    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz" #TODO_ready: 1 or 2mm???
-    inputspec.inputs.reference_skull = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm.nii.gz"
+    inputspec.inputs.reference_brain = globals._FSLDIR_ + globals._brainref #TODO_ready: 1 or 2mm???
+    inputspec.inputs.reference_skull = globals._FSLDIR_ + globals._headref
 
     # Multi-stage registration node with ANTS
     reg = pe.MapNode(interface=Registration(),
@@ -252,7 +252,7 @@ def anat2mni_ants_workflow_nipype(SinkTag="anat_preproc", wf_name="anat2mni_ants
 
     # Create png images for quality check
     myqc = qc.vol2png("anat2mni", "ANTS3", overlayiterated=False)
-    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz" #TODO_ready: 1 or 2mm???
+    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + globals._brainref #TODO_ready: 1 or 2mm???
     myqc.inputs.slicer.image_width = 500 # 5000 # for the 1mm template
     myqc.inputs.slicer.threshold_edges = 0.1 # 0.1  # for the 1mm template
 
@@ -336,8 +336,8 @@ def anat2mni_ants_workflow_harcoded(SinkTag="anat_preproc", wf_name="anat2mni_an
                                                           'reference_skull']),
                         name='inputspec')
 
-    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz" #TODO_ready: 1 or 2mm???
-    inputspec.inputs.reference_skull = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm.nii.gz"
+    inputspec.inputs.reference_brain = globals._FSLDIR_ + globals._brainref #TODO_ready: 1 or 2mm???
+    inputspec.inputs.reference_skull = globals._FSLDIR_ + globals._headref
 
     # Multi-stage registration node with ANTS
     reg = pe.MapNode(interface=Function(input_names=['anatomical_brain',
@@ -368,7 +368,7 @@ def anat2mni_ants_workflow_harcoded(SinkTag="anat_preproc", wf_name="anat2mni_an
 
     # Create png images for quality check
     myqc = qc.vol2png("anat2mni", "ANTS2_cpac", overlayiterated=False)
-    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz" #TODO_ready: 1 or 2mm???
+    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + globals._brainref #TODO_ready: 1 or 2mm???
     myqc.inputs.slicer.image_width = 500  # 5000 # for the 1mm template
     myqc.inputs.slicer.threshold_edges = 0.1  # 0.1  # for the 1mm template
 

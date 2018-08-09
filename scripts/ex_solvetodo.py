@@ -78,10 +78,14 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
 #
 # def pickindex(vec, i):
 #     return [x[i] for x in vec]
-
+stdrefvol=globals._RefVolPos_.first
 # myfuncproc = funcproc.FuncProc()
 mybet = bet.bet_workflow(SinkTag="func_preproc", fmri=True, wf_name="brain_extraction_func")
-mymc = mc.mc_workflow(reference_vol=3)
+mymc = mc.mc_workflow(reference_vol=stdrefvol)
+mycmpcor = cmpcor.compcor_workflow()
+# myconc = conc.concat_workflow(numconcat=2)
+mynuisscor = nuisscorr.nuissremov_workflow()
+mycens = cens.datacens_workflow()
 #create atlas matching this space
 # resample_atlas = pe.Node(interface=afni.Resample(outputtype = 'NIFTI_GZ',
 #                                           in_file="/Users/tspisak/data/atlases/MIST/Parcellations/MIST_7.nii.gz",
@@ -104,7 +108,11 @@ totalWorkflow.connect([
     (reorient_func, mybet,
         [('out_file', 'inputspec.in_file')]),
     (mybet, mymc,
-         [('outputspec.brain', 'inputspec.func')])
+         [('outputspec.brain', 'inputspec.func')]),
+    (mymc,mycens,
+        [('outputspec.func_out_file','inputspec.func')]),
+    (mymc,mycens,
+        [('outputspec.FD_file','inputspec.FD')])
     # (mybet, myfast,
     #      [('outputspec.brain', 'inputspec.brain')]),
     # (mybet, myanat2mni,

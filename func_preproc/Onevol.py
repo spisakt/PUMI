@@ -62,7 +62,7 @@ def onevol_workflow(SinkTag="anat_preproc", wf_name="get_example_vol"):
     analysisflow = nipype.Workflow(wf_name)
     analysisflow.connect(inputspec, 'func', idx, 'in_files')
     analysisflow.connect(inputspec, 'func', fslroi, 'in_file')
-    analysisflow.connect(idx, 'lastvolidx', fslroi, 't_min')
+    analysisflow.connect(idx, 'refvolidx', fslroi, 't_min')
     analysisflow.connect(fslroi, 'roi_file', ds, 'funclastvol')
     analysisflow.connect(fslroi, 'roi_file', outputspec, 'func1vol')
 
