@@ -16,8 +16,8 @@ def calculate_FD_P(in_file):
         file path
 
     Comment by BK:
-    Framewise displacement shows relative head motion as a scalar. The absolute values of relative translational and rotational (derived from a spere of radius 50mm) parameters are added.
-    The higher the valu the larger the displacement.
+    Framewise displacement shows relative head motion as a scalar. The absolute values of relative translational (in mm) and rotational ( in mm, derived from a sphere of radius 50mm) parameters are added.
+    The higher the value the larger the displacement.
     """
 
     import os
@@ -41,7 +41,8 @@ def calculate_FD_P(in_file):
 
     return out_file
 
-def mc_workflow(SinkTag = "func_preproc",
+def mc_workflow(reference_vol,
+                SinkTag = "func_preproc",
                 wf_name="motion_correction"):
 
     """
@@ -77,8 +78,7 @@ def mc_workflow(SinkTag = "func_preproc",
 
 
     """
-    #TODO maximum displacement file is a default output in AFNI 3dvolreg, however, in FSL McFLIRT I am not sure if this is equal to the rms_files output
-    # TODO nipype has the ability to calculate FD
+    # TODO_ready nipype has the ability to calculate FD: the function from CPAC calculates it correctly
     # import relevant packages
     import sys
     import os
@@ -111,17 +111,25 @@ def mc_workflow(SinkTag = "func_preproc",
     inputspec.inputs.stats_imgs = True
 
     # currently aligned to middle volume (default)
-    # todo: make parametrizable
+    # todo_ready: make parametrizable: the reference_vol variable is an argumentum of the mc_workflow
+
+
     # add the number of volumes in the functional data
-    #lastvolnum = pe.MapNode(interface=info_get.tMinMax,
+    refvolnumber = pe.MapNode(utility.Function(input_names=['in_files','refvolnumb'],
+                                               output_names=['startidx', 'stopidx','refvolidx'],
+                                               function=info_get.get_idx),
+                              iterfield=['in_files'],
+                              name='refvolnumber')
+    refvolnumber.inputs.refvolnumb=reference_vol
+    # refvolnumber= pe.MapNode(interface=info_get.tMinMax(refvolnumb=reference_vol),
     #                        iterfield=['in_files'],
-    #                        name='lastvolnum')
+    #                        name='refvolnumber')
 
     # Wraps command **mcflirt**
     mcflirt = pe.MapNode(interface=fsl.MCFLIRT(interpolation="spline"),  #, stages=4), #stages 4: more accurate but slow
-                         iterfield=['in_file'], # , 'ref_vol'], # make parametrizable
+                         iterfield=['in_file','ref_vol'], # , 'ref_vol'], # make parametrizable
                          name='mcflirt')
-    #TODO set refernec volume number
+    #TODO_ready set refernec volume number
 
     mcflirt.inputs.dof = 6
     mcflirt.inputs.save_mats = True
@@ -203,12 +211,12 @@ def mc_workflow(SinkTag = "func_preproc",
     ds_qc_tra.inputs.regexp_substitutions = [("(\/)[^\/]*$", "_trans.png")]
 
 
-    #TODO set the proper images which has to be saved in a the datasink specified directory
+    #TODO_ready set the proper images which has to be saved in a the datasink specified directory
     # Create a workflow to connect all those nodes
     analysisflow = nipype.Workflow(wf_name)
     analysisflow.connect(inputspec, 'func', mcflirt, 'in_file')
-    #analysisflow.connect(inputspec, 'func', lastvolnum, 'in_files')
-    #analysisflow.connect(lastvolnum, 'lastvolidx', mcflirt, 'ref_vol')
+    analysisflow.connect(inputspec, 'func', refvolnumber, 'in_files')
+    analysisflow.connect(refvolnumber, 'refvolidx', mcflirt, 'ref_vol')
     analysisflow.connect(mcflirt, 'par_file', calc_friston, 'in_file')
     analysisflow.connect(mcflirt, 'par_file', calculate_FD, 'in_file')
 

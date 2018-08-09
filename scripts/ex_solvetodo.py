@@ -14,7 +14,12 @@ import PUMI.anat_preproc.Faster as fast
 import PUMI.anat_preproc.Anat2MNI as anat2mni
 import nipype.interfaces.utility as utility
 import nipype.interfaces.io as io
-
+import PUMI.func_preproc.MotionCorrecter as mc
+import PUMI.func_preproc.Compcor as cmpcor
+import PUMI.func_preproc.NuissanceCorr as nuisscorr
+import PUMI.func_preproc.TemporalFiltering as tmpfilt
+import PUMI.func_preproc.DataCensorer as cens
+import PUMI.func_preproc.MedianAngleCorr as medangcor
 import PUMI.FuncProc as funcproc
 # import the necessary workflows from the func_preproc folder
 import PUMI.anat_preproc.Func2Anat as bbr
@@ -34,24 +39,54 @@ _regtype_ = globals._RegType_.FSL
 ##############################
 
 # create data grabber
-datagrab = pe.Node(nio.DataGrabber(outfields=['struct']), name='data_grabber')
+datagrab = pe.Node(nio.DataGrabber(outfields=['func']), name='data_grabber')
 
 datagrab.inputs.base_directory = os.getcwd()  # do we need this?
 datagrab.inputs.template = "*"  # do we need this?
-datagrab.inputs.field_template = dict(struct=sys.argv[1])  # specified by command line arguments
+datagrab.inputs.field_template = dict(func=sys.argv[1])  # specified by command line arguments
 datagrab.inputs.sort_filelist = True
 
-SinkDir = os.path.abspath(globals._SinkDir_ + "/" + "anat_preproc")
+SinkDir = os.path.abspath(globals._SinkDir_ + "/" + "func_preproc")
     # if not os.path.exists(SinkDir):
     #     os.makedirs(SinkDir)
 # Basic interface class generates identity mappings
+# reorient_struct = pe.MapNode(fsl.utils.Reorient2Std(),
+#                       iterfield=['in_file'],
+#                       name="reorient_struct")
+reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
+                      iterfield=['in_file'],
+                      name="reorient_func")
 
 
  # build the actual pipeline
-myanatproc = anatproc.AnatProc(stdreg=_regtype_)
-myanatproc.inputs.inputspec.bet_fract_int_thr = 0.3  # feel free to adjust, a nice bet is important!
-myanatproc.inputs.inputspec.bet_vertical_gradient = -0.3 # feel free to adjust, a nice bet is important!
+# myanatproc = anatproc.AnatProc(stdreg=_regtype_)
+# myanatproc.inputs.inputspec.bet_fract_int_thr = 0.3  # feel free to adjust, a nice bet is important!
+# myanatproc.inputs.inputspec.bet_vertical_gradient = -0.3 # feel free to adjust, a nice bet is important!
 # try scripts/opt_bet.py to optimise these parameters
+
+# mybbr = bbr.bbr_workflow()
+# # Add arbitrary number of nii images wthin the same space. The default is to add csf and wm masks for anatcompcor calculation.
+# #myadding=adding.addimgs_workflow(numimgs=2)
+# add_masks = pe.MapNode(fsl.ImageMaths(op_string=' -add'),
+#                        iterfield=['in_file', 'in_file2'],
+#                        name="addimgs")
+#
+# # TODO_ready: erode compcor noise mask!!!!
+# erode_mask = pe.MapNode(fsl.ErodeImage(),
+#                         iterfield=['in_file'],
+#                         name="erode_compcor_mask")
+#
+# def pickindex(vec, i):
+#     return [x[i] for x in vec]
+
+# myfuncproc = funcproc.FuncProc()
+mybet = bet.bet_workflow(SinkTag="func_preproc", fmri=True, wf_name="brain_extraction_func")
+mymc = mc.mc_workflow(reference_vol=3)
+#create atlas matching this space
+# resample_atlas = pe.Node(interface=afni.Resample(outputtype = 'NIFTI_GZ',
+#                                           in_file="/Users/tspisak/data/atlases/MIST/Parcellations/MIST_7.nii.gz",
+#                                           master=globals._FSLDIR_ + '/data/standard/MNI152_T1_3mm_brain.nii.gz'),
+#                          name='resample_atlas') #default interpolation is nearest neighbour
 
 ds = pe.Node(interface=io.DataSink(), name='ds')
 ds.inputs.base_directory = SinkDir
@@ -64,8 +99,12 @@ totalWorkflow.base_dir = '.'
 
 # anatomical part and func2anat
 totalWorkflow.connect([
-    (datagrab, myanatproc,
-        [('struct', 'inputspec.anat')])
+    (datagrab, reorient_func,
+        [('func', 'in_file')]),
+    (reorient_func, mybet,
+        [('out_file', 'inputspec.in_file')]),
+    (mybet, mymc,
+         [('outputspec.brain', 'inputspec.func')])
     # (mybet, myfast,
     #      [('outputspec.brain', 'inputspec.brain')]),
     # (mybet, myanat2mni,

@@ -61,9 +61,9 @@ def anat2mni_fsl_workflow(SinkTag="anat_preproc", wf_name="anat2mni_fsl"):
                                                           ]),
                         name='inputspec')
 
-    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm_brain.nii.gz"
-    inputspec.inputs.reference_skull = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm.nii.gz"
-    inputspec.inputs.ref_mask = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm_brain_mask_dil.nii.gz"
+    inputspec.inputs.reference_brain = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
+    inputspec.inputs.reference_skull = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm.nii.gz"
+    inputspec.inputs.ref_mask = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain_mask_dil.nii.gz"
     # inputspec.inputs.fnirt_config = "T1_2_MNI152_2mm"
 
 
@@ -98,9 +98,9 @@ def anat2mni_fsl_workflow(SinkTag="anat_preproc", wf_name="anat2mni_fsl"):
 
     # Create png images for quality check
     myqc = qc.vol2png("anat2mni", "FSL2", overlayiterated=False)
-    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_1mm_brain.nii.gz"
-    myqc.inputs.slicer.image_width = 1500
-    myqc.inputs.slicer.threshold_edges = 0.09
+    myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz"
+    myqc.inputs.slicer.image_width = 500
+    myqc.inputs.slicer.threshold_edges = 0.1
 
     # Save outputs which are important
     ds = pe.Node(interface=io.DataSink(), name='ds')
@@ -347,7 +347,7 @@ def anat2mni_ants_workflow_harcoded(SinkTag="anat_preproc", wf_name="anat2mni_an
                                         output_names=['transform_composite',
                                                       'transform_inverse_composite',
                                                       'warped_image'],
-                                        function=hardcoded_reg_cpac),
+                                        function=hardcoded_reg_fast),
                      iterfield=['anatomical_brain', 'anatomical_skull'],
                      name="ANTS_hardcoded")
 
@@ -369,8 +369,8 @@ def anat2mni_ants_workflow_harcoded(SinkTag="anat_preproc", wf_name="anat2mni_an
     # Create png images for quality check
     myqc = qc.vol2png("anat2mni", "ANTS2_cpac", overlayiterated=False)
     myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + "/data/standard/MNI152_T1_2mm_brain.nii.gz" #TODO_ready: 1 or 2mm???
-    myqc.inputs.slicer.image_width = 1500  # 5000 # for the 1mm template
-    myqc.inputs.slicer.threshold_edges = 0.09  # 0.1  # for the 1mm template
+    myqc.inputs.slicer.image_width = 500  # 5000 # for the 1mm template
+    myqc.inputs.slicer.threshold_edges = 0.1  # 0.1  # for the 1mm template
 
 
     # Save outputs which are important

@@ -66,7 +66,6 @@ def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation"):
 
 
     # TODO_ready: use prior probabilioty maps
-    # TODO : maybe eroding of the csf map is suitable
     # Wraps command **fast**
     fast = pe.MapNode(interface=fsl.FAST(),
                       iterfield=['in_files',
