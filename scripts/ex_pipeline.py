@@ -49,7 +49,6 @@ pop_id = pe.Node(interface=utils_convert.List2TxtFile,
                      name='pop_id')
 pop_id.inputs.rownum = 0
 pop_id.inputs.out_file = "subject_IDs.txt"
-pop_id.inputs.filelist = False
 ds_id = pe.Node(interface=nio.DataSink(), name='ds_pop_id')
 ds_id.inputs.regexp_substitutions = [("(\/)[^\/]*$", "IDs.txt")]
 ds_id.inputs.base_directory = globals._SinkDir_
@@ -74,11 +73,10 @@ add_masks = pe.MapNode(fsl.ImageMaths(op_string=' -add'),
                        iterfield=['in_file', 'in_file2'],
                        name="addimgs")
 
-# TODO: erode compcor noise mask!!!!
+# TODO_ready: erode compcor noise mask!!!!
 erode_mask = pe.MapNode(fsl.ErodeImage(),
                         iterfield=['in_file'],
                         name="erode_compcor_mask")
-# TODO: add skull voxels??
 
 def pickindex(vec, i):
     return [x[i] for x in vec]

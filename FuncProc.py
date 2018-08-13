@@ -14,7 +14,7 @@ import nipype.interfaces.utility as utility
 import PUMI.utils.globals as globals
 import os
 
-def FuncProc(SinkTag="func_preproc", wf_name="funcproc"):
+def FuncProc(stdrefvol,SinkTag="func_preproc", wf_name="funcproc"):
     """
         Performs processing of functional (resting-state) images:
 
@@ -50,7 +50,7 @@ def FuncProc(SinkTag="func_preproc", wf_name="funcproc"):
     # build the actual pipeline
     #myonevol = onevol.onevol_workflow(SinkDir=SinkDir)
     mybet = bet.bet_workflow(SinkTag="func_preproc", fmri=True, wf_name="brain_extraction_func")
-    mymc = mc.mc_workflow()
+    mymc = mc.mc_workflow(reference_vol=stdrefvol)
     mycmpcor = cmpcor.compcor_workflow()
     myconc = conc.concat_workflow(numconcat=2)
     mynuisscor = nuisscorr.nuissremov_workflow()

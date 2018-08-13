@@ -46,7 +46,6 @@ pop_id = pe.Node(interface=utils_convert.List2TxtFile,
                      name='pop_id')
 pop_id.inputs.rownum = 0
 pop_id.inputs.out_file = "subject_IDs.txt"
-pop_id.inputs.filelist = False
 ds_id = pe.Node(interface=nio.DataSink(), name='ds_pop_id')
 ds_id.inputs.regexp_substitutions = [("(\/)[^\/]*$", "IDs.txt")]
 ds_id.inputs.base_directory = globals._SinkDir_
@@ -70,16 +69,6 @@ mybet = pe.MapNode(interface=fsl.BET(frac=0.3, mask=True),
                    iterfield=['in_file'],
                    name="func_bet")
 
-# Get TR value from header
-#TRvalue = pe.MapNode(interface=info_get.TR,
-#                     iterfield=['in_file'],
-#                     name='TRvalue')
-
-# highpass-filter - no, we dont need it
-#tempfilt = pe.MapNode(interface=afni.Bandpass(highpass=0.008,  # TODO: parametrize hpf threshold
-#                            outputtype='NIFTI_GZ', despike=False, no_detrend=True, notrans=True),
-#                      iterfield=['in_file', 'tr'],
-#                      name="highpass_filter")
 
 scale_glob_4d = pe.MapNode(interface=fsl.ImageMaths(op_string="-ing 1000"),
                            iterfield=['in_file'],
@@ -105,11 +94,10 @@ meanFD = pe.MapNode(interface=utils_math.Txt2meanTxt,
                   name='meanFD')
 meanFD.inputs.axis = 0  # global mean
 
-pop_FD = pe.Node(interface=utils_convert.List2TxtFile,
+pop_FD = pe.Node(interface=utils_convert.List2TxtFileOpen,
                      name='pop_FD')  # TODO  sink this
 pop_FD.inputs.rownum = 0
 pop_FD.inputs.out_file = "FD.txt"
-pop_FD.inputs.filelist = True
 
 
 totalWorkflow = nipype.Workflow('exAROMA')

@@ -196,7 +196,7 @@ def mac_workflow(target_angle=90,
     myqc = qc.timecourse2png("timeseries", tag="050_medang")
 
     # collect and save median angle values
-    pop_medang = pe.Node(interface=utils_convert.List2TxtFile,
+    pop_medang = pe.Node(interface=utils_convert.List2TxtFile, #TODO: save subject level median angle
                      name='pop_medang')
     # save data out with Datasink
     ds_medang = pe.Node(interface=io.DataSink(), name='ds_pop_medang')

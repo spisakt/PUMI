@@ -1,5 +1,5 @@
-def tmpfilt_workflow(highpass_Hz=0.008,
-                     lowpass_Hz=0.08,
+def tmpfilt_workflow(highpass_Hz,
+                     lowpass_Hz,
                      SinkTag="func_preproc",
                      wf_name="temporal_filtering"):
     #TODO kivezetni a higpass_inseces lowpass_insec valtozokat egy(esetleg kettto)-vel feljebbi szintekre.

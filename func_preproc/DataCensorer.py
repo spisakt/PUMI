@@ -12,12 +12,12 @@ def datacens_workflow(SinkTag="func_preproc", wf_name="data_censoring"):
 
     Description:
         Do the data censoring on the 4D functional data. First, it calculates the framewise displacement according to Power's method. Second, it
-        indexes the volumes which FS is in the upper part in percent(determined by the threshold variable which is 5% by default). Thirdly, it excludes those volumes and one volume
+        indexes the volumes which FD is in the upper part in percent(determined by the threshold variable which is 5% by default). Thirdly, it excludes those volumes and one volume
         before and 2 volumes after the indexed volume. The workflow returns a 4D scrubbed functional data.
 
     Workflow inputs:
         :param func: The reoriented,motion occrected, nuissance removed and bandpass filtered functional file.
-        :param movement_parameters: the movement parameters from volume alignment step
+        :param FD: the frame wise displacement calculated by the MotionCorrecter.py script
         :param threshold: threshold of FD volumes which should be excluded
         :param SinkDir:
         :param SinkTag: The output directory in which the returned images (see workflow outputs) could be found in a subdirectory directory specific for this workflow..
@@ -70,7 +70,8 @@ def datacens_workflow(SinkTag="func_preproc", wf_name="data_censoring"):
                         name='inputspec')
     inputspec.inputs.threshold = 5
 
-    #TODO check CPAC.generate_motion_statistics.generate_motion_statistics script. It may use the FD of Jenkinson to index volumes which violate the upper threhold limit, no matter what we set.
+    #TODO_ready check CPAC.generate_motion_statistics.generate_motion_statistics script. It may use the FD of Jenkinson to index volumes which violate the upper threhold limit, no matter what we set.
+    # - we use the power method to calculate FD
     # Determine the indices of the upper part (which is defined by the threshold, deafult 5%) of values based on their FD values
     calc_upprperc = pe.MapNode(utility.Function(input_names=['in_file',
                                                         'threshold'],
@@ -103,7 +104,7 @@ def datacens_workflow(SinkTag="func_preproc", wf_name="data_censoring"):
     ds.inputs.base_directory=SinkDir
 
 
-    #TODO: some plot for qualitiy checking
+    #TODO_ready: some plot for qualitiy checking
 
     # Create workflow
     analysisflow = pe.Workflow(wf_name)

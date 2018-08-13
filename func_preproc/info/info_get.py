@@ -22,7 +22,8 @@ def get_scan_info(in_file):
     TR = header['pixdim'][4]
     return float(TR)
 
-def get_idx(in_files, stop_idx=None, start_idx=None):
+def get_idx(in_files,refvolnumb=1, stop_idx=None, start_idx=None):
+
     """
     Adapted from C-PAC (https://github.com/FCP-INDI/C-PAC)
     Method to get the first and the last slice for
@@ -64,7 +65,12 @@ def get_idx(in_files, stop_idx=None, start_idx=None):
         raise TypeError('Input nifti file: %s is not a 4D file' % in_files)
     # Grab the number of volumes
     nvols = int(hdr.get_data_shape()[3])
-    lastvolidx=nvols-1
+    if (refvolnumb==1):
+        refvolidx=1
+    elif (refvolnumb==2):
+        refvolidx=int(round(nvols/2))
+    elif (refvolnumb==3):
+        refvolidx =nvols-1
 
     if (start_idx == None) or (start_idx < 0) or (start_idx > (nvols - 1)):
         startidx = 0
@@ -76,7 +82,7 @@ def get_idx(in_files, stop_idx=None, start_idx=None):
     else:
         stopidx = stop_idx
 
-    return stopidx, startidx, lastvolidx
+    return stopidx, startidx, refvolidx
 
 
 TR = Function(input_names=['in_file'],
@@ -84,7 +90,7 @@ TR = Function(input_names=['in_file'],
                        function=get_scan_info)
 
 
-tMinMax = Function(input_names=['in_files', 'start_idx', 'stop_idx'],
-                       output_names=['startidx', 'stopidx','lastvolidx'],
+tMinMax = Function(input_names=['in_files','refvolnumb', 'start_idx', 'stop_idx'],
+                       output_names=['startidx', 'stopidx','refvolidx'],
                        function=get_idx)
 

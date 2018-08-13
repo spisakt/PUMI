@@ -53,7 +53,7 @@ def nuissremov_workflow(SinkTag="func_preproc", wf_name="nuisance_correction"):
     ds = pe.Node(interface=io.DataSink(), name='ds')
     ds.inputs.base_directory = SinkDir
 
-    #TODO: qc timeseries before and after
+    #TODO_ready: qc timeseries before and after
 
     # Generate workflow
     analysisflow = nipype.Workflow(wf_name)

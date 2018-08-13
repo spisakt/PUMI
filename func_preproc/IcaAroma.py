@@ -102,7 +102,6 @@ def aroma_workflow(fwhm=0, # in mm
     ds_txt.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".txt")]
 
     # Define outputs of the workflow
-    # TODO inverted transformation matrix node is necessery
     outputspec = pe.Node(utility.IdentityInterface(fields=['aggr_denoised_file',
                                                            'nonaggr_denoised_file',
                                                            'motion_ICs',

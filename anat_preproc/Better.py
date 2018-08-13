@@ -75,7 +75,6 @@ def bet_workflow(Robust=True, fmri=False, SinkTag="anat_preproc", wf_name="brain
     #Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['brain',
                                                            'brain_mask'
-                                                           #'skull'  #TODO: is it supposed to be really the skull or the full head image?
                                                            ]),
                          name = 'outputspec')
 
