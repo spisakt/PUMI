@@ -159,7 +159,7 @@ def mc_workflow(reference_vol,
                         name='meanFD')
     meanFD.inputs.axis = 0  # global mean
 
-    pop_FD = pe.Node(interface=utils_convert.List2TxtFile,
+    pop_FD = pe.Node(interface=utils_convert.List2TxtFileOpen,
                      name='pop_FD')
 
     # save data out with Datasink

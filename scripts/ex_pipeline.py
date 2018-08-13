@@ -49,7 +49,6 @@ pop_id = pe.Node(interface=utils_convert.List2TxtFile,
                      name='pop_id')
 pop_id.inputs.rownum = 0
 pop_id.inputs.out_file = "subject_IDs.txt"
-pop_id.inputs.filelist = False
 ds_id = pe.Node(interface=nio.DataSink(), name='ds_pop_id')
 ds_id.inputs.regexp_substitutions = [("(\/)[^\/]*$", "IDs.txt")]
 ds_id.inputs.base_directory = globals._SinkDir_

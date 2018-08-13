@@ -20,6 +20,6 @@ class _RefVolPos_:
     last=3
 
 #reference resolution could be changed here
-_brainref="/data/standard/MNI152_T1_2mm_brain.nii.gz"
-_headref="/data/standard/MNI152_T1_2mm.nii.gz"
-_brainref_mask="/data/standard/MNI152_T1_2mm_brain_mask_dil.nii.gz"
+_brainref="/data/standard/MNI152_T1_1mm_brain.nii.gz"
+_headref="/data/standard/MNI152_T1_1mm.nii.gz"
+_brainref_mask="/data/standard/MNI152_T1_1mm_brain_mask_dil.nii.gz"

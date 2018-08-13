@@ -62,9 +62,7 @@ def concatenate(par1, par2='', par3='', par4='', par5='', par6='', par7='', par8
     return os.getcwd() + '/parfiles'
 
 
-def list2TxtFile(in_list, filelist=True, rownum=-1, out_file='params.txt'):
-    # filelist==True: list is a list of files to be opened
-    # filelist==False: list is a list iof the actual values to save
+def list2TxtFile(in_list, rownum=-1, out_file='params.txt'):
 
     # rownum <0: do not write rownums to file
     # rownum == 0: write rownums to file, beginning from 0, like nipype numbers subjects
@@ -73,13 +71,7 @@ def list2TxtFile(in_list, filelist=True, rownum=-1, out_file='params.txt'):
     import numpy as np
     import os
 
-    if filelist:
-        x = []
-        for i in in_list:
-            x.append(np.loadtxt(i))
-        x = np.array(x)
-    else:
-        x = np.array(in_list)
+    x = np.array(in_list)
 
     if rownum == 0:
         x = np.dstack((np.arange(0, x.size), x))[0]
@@ -91,8 +83,38 @@ def list2TxtFile(in_list, filelist=True, rownum=-1, out_file='params.txt'):
         np.savetxt(out_file, x)
     return os.getcwd() + '/' + out_file
 
+
+def list2TxtFile_open(in_list, rownum=-1, out_file='params.txt'):
+
+    # like list2TxtFile, but opens the files given in in_list and reads them
+    # filelist==True: list is a list of files to be opened
+    # filelist==False: list is a list iof the actual values to save
+
+    # rownum <0: do not write rownums to file
+    # rownum == 0: write rownums to file, beginning from 0, like nipype numbers subjects
+    # rownum < 0: write rownums to file, beginning from 1, WARNING: very unpythonic!!!
+
+    import numpy as np
+    import os
+
+    x = []
+    for i in in_list:
+        x.append(np.loadtxt(i))
+    x = np.array(x)
+
+    if rownum == 0:
+        x = np.dstack((np.arange(0, x.size), x))[0]
+        np.savetxt(out_file, x, "%s\t%s")
+    elif rownum > 0:
+        x = np.dstack((np.arange(1, x.size+1), x))[0]
+        np.savetxt(out_file, x, "%s\t%s")
+    else:
+        np.savetxt(out_file, x)
+
+    return os.getcwd() + '/' + out_file
+
 ###############################################
-# TODO:list2text-et javitani
+# TODO_ready:fix list2text
 
 Val2Dict = Function(input_names=['val'],
                        output_names=['dict'],
@@ -114,6 +136,10 @@ DropFirstLine = Function(input_names=['txt'],
                        output_names=['droppedtxtfloat'],
                        function=drop_firstline)
 
-List2TxtFile = Function(input_names=['in_list', 'filelist', 'rownum', 'out_file'],
+List2TxtFile = Function(input_names=['in_list', 'rownum', 'out_file'],
                        output_names=['txt_file'],
                        function=list2TxtFile)
+
+List2TxtFileOpen = Function(input_names=['in_list', 'rownum', 'out_file'],
+                       output_names=['txt_file'],
+                       function=list2TxtFile_open)
