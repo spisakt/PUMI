@@ -64,15 +64,15 @@ def netmat(timeseries_list, measure="correlation",timewindow=38,winstepsize=2):
     #     #print os.path.join(os.getcwd(), str(i) + "_mtx.tsv")
     #     subject_matrix_list.append( str(os.path.join(os.getcwd(), directory, "mtx.tsv")) )
 
-    mean = pd.DataFrame(conn_measure.mean_)
-    mean.values[range(regnum), range(regnum)] = 0  # zero-out digonal
-    mean.columns = ts.columns
-    mean.index = mean.columns
-    outfile = measure.replace(' ', '_') + "_mean_mtx.tsv"
-    mean.to_csv(outfile, sep="\t")
-
-    return os.path.join(os.getcwd(), outfile), subject_matrix_list
-
+    # mean = pd.DataFrame(conn_measure.mean_)
+    # mean.values[range(regnum), range(regnum)] = 0  # zero-out digonal
+    # mean.columns = ts.columns
+    # mean.index = mean.columns
+    # outfile = measure.replace(' ', '_') + "_mean_mtx.tsv"
+    # mean.to_csv(outfile, sep="\t")
+    #
+    # return os.path.join(os.getcwd(), outfile), subject_matrix_list
+    return funccorstd
 
 
 # the workflow
