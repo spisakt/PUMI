@@ -29,7 +29,8 @@ reorient_struct = pe.MapNode(fsl.utils.Reorient2Std(),
 
 bet = pe.MapNode(interface=fsl.BET(),
                      iterfield=['in_file'],
-                 #iterables=[('frac',[0.3,0.8])],
+                 iterables=[('vertical_gradient',[-0.2,0,0.2])
+                            ],
                   name='bet')
 
 myqc = qc.vol2png("brain_extraction", overlay=True)
