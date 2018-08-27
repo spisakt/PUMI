@@ -35,6 +35,10 @@ def netmat(timeseries_list, measure="correlation",timewindow=38,winstepsize=2):
     for subj in timeseries_list:
         ts = pd.read_csv(subj, sep="\t")
         pooled_subjects.append(ts.values)
+
+    conn_measure = ConnectivityMeasure(kind=measure, discard_diagonal=True)
+    correlation_matrix = conn_measure.fit_transform(pooled_subjects)
+
     strtidx = np.arange(((pooled_subjects[0].shape[0] - timewindow) / winstepsize) + 1) * winstepsize
     conn_measure = ConnectivityMeasure(kind=measure)
     funccorstd=[]

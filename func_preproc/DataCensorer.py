@@ -114,6 +114,7 @@ def datacens_workflow(SinkTag="func_preproc", wf_name="data_censoring"):
     analysisflow.connect(inputspec, 'threshold', calc_upprperc, 'threshold')
     # Create the proper format for the scrubbing procedure
     analysisflow.connect(calc_upprperc, 'frames_in_idx', craft_scrub_input, 'frames_in_1D_file')
+    analysisflow.connect(calc_upprperc, 'out_file', ds, 'numberofcens') # TODO save this in separet folder for QC
     analysisflow.connect(inputspec, 'func', craft_scrub_input, 'scrub_input')
     # Do the scubbing
     analysisflow.connect(craft_scrub_input, 'scrub_input_string', scrubbed_preprocessed, 'scrub_input')
@@ -129,7 +130,7 @@ def datacens_workflow(SinkTag="func_preproc", wf_name="data_censoring"):
     return analysisflow
 
 
-def calculate_upperpercent(in_file,threshold):
+def calculate_upperpercent(in_file,threshold, frames_before=1, frames_after=2):
     import os
     import numpy as np
     from numpy import loadtxt
@@ -140,6 +141,26 @@ def calculate_upperpercent(in_file,threshold):
     limitvalueindex = int(len(sortedpwrsFDdata) * threshold / 100)
     limitvalue = sortedpwrsFDdata[len(sortedpwrsFDdata) - limitvalueindex]
     frames_in_idx = np.argwhere(powersFD_data < limitvalue)[:,0]
+    frames_out = np.argwhere(powersFD_data >= limitvalue)[:, 0]
+    extra_indices = []
+    for i in frames_out:
+
+        # remove preceding frames
+        if i > 0:
+            count = 1
+            while count <= frames_before:
+                extra_indices.append(i - count)
+                count += 1
+
+        # remove following frames
+        count = 1
+        while count <= frames_after:
+            extra_indices.append(i + count)
+            count += 1
+
+    indices_out = list(set(frames_out) | set(extra_indices))
+    indices_out.sort()
+    frames_in_idx=np.setdiff1d(frames_in_idx, indices_out)
     frames_in_idx_str = ','.join(str(x) for x in frames_in_idx)
     frames_in_idx = frames_in_idx_str.split()
 
@@ -151,7 +172,7 @@ def calculate_upperpercent(in_file,threshold):
     f.write("%.3f," % (percentFD))
     f.close()
 
-    return frames_in_idx, percentFD
+    return frames_in_idx, percentFD, out_file
 
 def get_indx(scrub_input, frames_in_1D_file):
     """
