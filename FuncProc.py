@@ -84,6 +84,7 @@ def FuncProc(stdrefvol,SinkTag="func_preproc", wf_name="funcproc"):
         (mynuisscor,mytmpfilt,[('outputspec.out_file','inputspec.func')]),
         (mytmpfilt,mycens,[('outputspec.func_tmplfilt','inputspec.func')]),
         (mymc,mycens,[('outputspec.FD_file','inputspec.FD')]),
+        (mybet,mymedangcor, [('outputspec.brain_mask','inputspec.mask')]),
         (mycens, mymedangcor, [('outputspec.scrubbed_image', 'inputspec.realigned_file')]),
         # outputspec
         (mymc, outputspec, [('outputspec.func_out_file', 'func_mc')]),

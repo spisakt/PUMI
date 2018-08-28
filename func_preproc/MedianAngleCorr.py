@@ -1,4 +1,4 @@
-def median_angle_correct(target_angle_deg, realigned_file):
+def median_angle_correct(target_angle_deg, realigned_file,mask):
     """
     Performs median angle correction on fMRI data.  Median angle correction algorithm
     based on [1]_.
@@ -50,9 +50,11 @@ def median_angle_correct(target_angle_deg, realigned_file):
     data = nii.get_data().astype(np.float64)
     #print "realigned file: " + realigned_file + ", subject data dimensions: " + data.shape
 
-    mask = (data != 0).sum(-1) != 0
-
-    Y = data[mask].T
+    # mask = (data != 0).sum(-1) != 0
+    masknii = nb.load(mask)
+    maskdata = masknii.get_data().astype(np.bool)
+    #maskdata_bool = (maskdata!= 0).sum(-1) != 0
+    Y = data[maskdata].T
 
     Yc = Y - np.tile(Y.mean(0), (Y.shape[0], 1))
     Yn = Yc / np.tile(np.sqrt((Yc * Yc).sum(0)), (Yc.shape[0], 1))
@@ -82,7 +84,7 @@ def median_angle_correct(target_angle_deg, realigned_file):
 
     #print 'Writing correction to file...' + corrected_file
     data = np.zeros_like(data)
-    data[mask] = Ynf.T
+    data[maskdata] = Ynf.T
     writeToFile(data, nii, corrected_file)
 
     return corrected_file, angles_file
@@ -101,6 +103,7 @@ def mac_workflow(target_angle=90,
 
     Workflow inputs:
         :param func: The reoriented functional file.
+        :param target angle: the default is 90.
         :param SinkDir:
         :param SinkTag: The output directory in which the returned images (see workflow outputs) could be found in a subdirectory directory specific for this workflow..
 
@@ -176,7 +179,8 @@ def mac_workflow(target_angle=90,
         os.makedirs(SinkDir)
     #TODO set target angle...
     inputspec = pe.Node(utility.IdentityInterface(fields=['realigned_file',
-                                                       'target_angle']),
+                                                       'target_angle',
+                                                          'mask']),
                         name='inputspec')
     inputspec.inputs.target_angle=target_angle
     outputspec = pe.Node(utility.IdentityInterface(fields=['final_func',
@@ -186,11 +190,13 @@ def mac_workflow(target_angle=90,
 
     # Caution: inpout fmri must be masked (background=0)
     mac = pe.MapNode(utility.Function(input_names=['target_angle_deg',
-                                             'realigned_file'],
+                                             'realigned_file',
+                                                   'mask'],
                                 output_names=['corrected_file',
                                               'angles_file'],
                                 function=median_angle_correct),
-                     iterfield=['realigned_file'],
+                     iterfield=['realigned_file',
+                                'mask'],
                   name='median_angle_correct')
 
     myqc = qc.timecourse2png("timeseries", tag="050_medang")
@@ -208,6 +214,7 @@ def mac_workflow(target_angle=90,
     analysisflow= pe.Workflow(wf_name)
     analysisflow.connect(inputspec, 'realigned_file', mac, 'realigned_file')
     analysisflow.connect(inputspec, 'target_angle', mac, 'target_angle_deg')
+    analysisflow.connect(inputspec, 'mask', mac, 'mask')
     analysisflow.connect(mac, 'corrected_file', outputspec, 'final_func')
     analysisflow.connect(mac, 'angles_file', outputspec, 'pc_angles')
     analysisflow.connect(mac, 'corrected_file', myqc, 'inputspec.func')
