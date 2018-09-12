@@ -1,21 +1,22 @@
 #!/usr/bin/env python
-import sys
-# sys.path.append("/home/balint/Dokumentumok/phd/github/") #PUMI should be added to the path by install or by the developer
-# az importalasnal az ~_preproc utan a .fajlnev-et kell megadni
-import nipype
-import nipype.pipeline as pe
-# import the defined workflows from the anat_preproc folder
-import nipype.interfaces.io as nio
-import nipype.interfaces.fsl as fsl
-import nipype.interfaces.afni as afni
 import PUMI.AnatProc as anatproc
 import PUMI.FuncProc as funcproc
 # import the necessary workflows from the func_preproc folder
 import PUMI.anat_preproc.Func2Anat as bbr
 import PUMI.func_preproc.func2standard as transform
-import PUMI.utils.utils_convert as utils_convert
-import os
 import PUMI.utils.globals as globals
+import PUMI.utils.utils_convert as utils_convert
+# sys.path.append("/home/balint/Dokumentumok/phd/github/") #PUMI should be added to the path by install or by the developer
+# az importalasnal az ~_preproc utan a .fajlnev-et kell megadni
+import nipype
+import nipype.interfaces.afni as afni
+import nipype.interfaces.fsl as fsl
+# import the defined workflows from the anat_preproc folder
+import nipype.interfaces.io as nio
+import nipype.pipeline as pe
+import os
+import sys
+
 #import PUMI.utils.addimages as adding
 
 # parse command line arguments

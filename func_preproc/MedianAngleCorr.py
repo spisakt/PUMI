@@ -204,6 +204,11 @@ def mac_workflow(target_angle=90,
     # collect and save median angle values
     pop_medang = pe.Node(interface=utils_convert.List2TxtFile, #TODO: save subject level median angle
                      name='pop_medang')
+
+    # save mac file
+    ds = pe.Node(interface=io.DataSink(), name='ds')
+    ds.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
+
     # save data out with Datasink
     ds_medang = pe.Node(interface=io.DataSink(), name='ds_pop_medang')
     ds_medang.inputs.regexp_substitutions = [("(\/)[^\/]*$", "medang.txt")]
@@ -221,6 +226,8 @@ def mac_workflow(target_angle=90,
     # pop-level medang values
     analysisflow.connect(mac, 'angles_file', pop_medang, 'in_list')
     analysisflow.connect(pop_medang, 'txt_file', ds_medang, 'pop')
+    analysisflow.connect(mac, 'corrected_file',ds, 'med_ang')
+
 
     return analysisflow
 # After here, functions are manipulating in a group level.
