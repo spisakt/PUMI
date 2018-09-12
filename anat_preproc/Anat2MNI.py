@@ -367,7 +367,7 @@ def anat2mni_ants_workflow_harcoded(SinkTag="anat_preproc", wf_name="anat2mni_an
     #  # or hardcoded_reg_cpac
 
     # Create png images for quality check
-    myqc = qc.vol2png("anat2mni", "ANTS2_cpac", overlayiterated=False)
+    myqc = qc.vol2png("anat2mni", "ANTS", overlayiterated=False)
     myqc.inputs.inputspec.overlay_image = globals._FSLDIR_ + globals._brainref #TODO_ready: 1 or 2mm???
     myqc.inputs.slicer.image_width = 500  # 5000 # for the 1mm template
     myqc.inputs.slicer.threshold_edges = 0.1  # 0.1  # for the 1mm template
