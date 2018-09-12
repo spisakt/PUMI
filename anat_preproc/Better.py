@@ -99,7 +99,7 @@ def bet_workflow(Robust=True, fmri=False, SinkTag="anat_preproc", wf_name="brain
     else:
         analysisflow.connect(bet, 'out_file', outputspec, 'brain')
     analysisflow.connect(bet, 'out_file', ds, 'bet_brain')
-    analysisflow.connect(bet, 'mask_file', ds, 'bet_mask')
+    analysisflow.connect(bet, 'mask_file', ds, 'brain_mask')
 
     analysisflow.connect(inputspec, 'in_file', myqc, 'inputspec.bg_image')
     analysisflow.connect(bet, 'out_file', myqc, 'inputspec.overlay_image')

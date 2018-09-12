@@ -68,7 +68,7 @@ def compcor_workflow(SinkTag="func_preproc", wf_name="compcor"):
     ds_nii.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
 
     # Calculate compcor files
-    compcor=pe.MapNode(interface=cnf.ACompCor(pre_filter=False,header_prefix=""),
+    compcor=pe.MapNode(interface=cnf.ACompCor(pre_filter='polynomial',header_prefix="",num_components=5),
                        iterfield=['realigned_file','repetition_time','mask_files'],
                     name='compcor')
 
