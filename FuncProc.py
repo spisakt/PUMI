@@ -14,7 +14,7 @@ import nipype.interfaces.utility as utility
 import PUMI.utils.globals as globals
 import os
 
-def FuncProc(stdrefvol,SinkTag="func_preproc", wf_name="funcproc"):
+def FuncProc(stdrefvol="mid",SinkTag="func_preproc", wf_name="funcproc"):
     """
         Performs processing of functional (resting-state) images:
 
@@ -98,10 +98,10 @@ def FuncProc(stdrefvol,SinkTag="func_preproc", wf_name="funcproc"):
 
     return wf_mc
 
-def FuncProc_cpac(stdrefvol,SinkTag="func_preproc", wf_name="funcproc"):
+def FuncProc_cpac(stdrefvol="mid",SinkTag="func_preproc", wf_name="funcproc"):
     """
         Performs processing of functional (resting-state) images, closely replicating the results of C-PAC,
-        with the conf file: 
+        with the conf file: etc/cpac_conf.yml
 
         Images should be already reoriented, e.g. with fsl fslreorient2std (see scripts/ex_pipeline.py)
 
@@ -134,21 +134,22 @@ def FuncProc_cpac(stdrefvol,SinkTag="func_preproc", wf_name="funcproc"):
 
     # build the actual pipeline
     #myonevol = onevol.onevol_workflow(SinkDir=SinkDir)
-    mybet = bet.bet_workflow(SinkTag="func_preproc", fmri=True, wf_name="brain_extraction_func")
-    mymc = mc.mc_workflow(reference_vol=stdrefvol)
+    mymc = mc.mc_workflow_afni(reference_vol=stdrefvol, FD_mode = "Power")
+    mybet = bet.bet_workflow(SinkTag="func_preproc", fmri=True,
+                             wf_name="brain_extraction_func")  # do it with Automaks of AFNI?
     mycmpcor = cmpcor.compcor_workflow()
-    myconc = conc.concat_workflow(numconcat=2)
+    mydespike = cens.despike_workflow()
+    myconc = conc.concat_workflow(numconcat=3)
     mynuisscor = nuisscorr.nuissremov_workflow()
-    mytmpfilt = tmpfilt.tmpfilt_workflow(highpass_Hz=0.008, lowpass_Hz=0.08)
-    mycens = cens.datacens_workflow()
     mymedangcor = medangcor.mac_workflow()
+    mytmpfilt = tmpfilt.tmpfilt_workflow(highpass_Hz=0.01, lowpass_Hz=0.08)
+
 
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['func_mc',
                                                            'func_mc_nuis',
-                                                           'func_mc_nuis_bpf',
-                                                           'func_mc_nuis_bpf_cens',
-                                                           'func_mc_nuis_bpf_cens_medang',
+                                                           'func_mc_nuis_medang',
+                                                           'func_mc_nuis_medang_bpf',
                                                             # non-image data
                                                            'FD'
                                                            ]),
@@ -156,29 +157,29 @@ def FuncProc_cpac(stdrefvol,SinkTag="func_preproc", wf_name="funcproc"):
     wf_mc = nipype.Workflow(wf_name)
 
     wf_mc.connect([
-        (inputspec, mybet,
-         [('func', 'inputspec.in_file')]),
-        (mybet, mymc,
-         [('outputspec.brain', 'inputspec.func')]),
-        (mymc, mycmpcor, [('outputspec.func_out_file', 'inputspec.func_aligned')]),
+        (inputspec, mymc,
+         [('func', 'inputspec.func')]),
+        (mymc, mybet,
+         [('outputspec.func_out_file', 'inputspec.in_file')]),
+        (mybet, mycmpcor, [('outputspec.brain', 'inputspec.func_aligned')]),
         (inputspec, mycmpcor, [('cc_noise_roi', 'inputspec.mask_file')]),
-        (mycmpcor,myconc, [('outputspec.components_file','inputspec.par1')]),
+        (mymc, mydespike, [("outputspec.FD_file", "inputspec.FD")]),
+        (mycmpcor, myconc, [('outputspec.components_file', 'inputspec.par1')]),
         (mymc, myconc, [('outputspec.first24_file', 'inputspec.par2')]),
+        (mydespike, myconc, [('outputspec.despike_mat', 'inputspec.par3')]),
         (myconc,mynuisscor, [('outputspec.concat_file', 'inputspec.design_file')]),
-        (mymc, mynuisscor, [('outputspec.func_out_file', 'inputspec.in_file')]),
-        (mynuisscor,mytmpfilt,[('outputspec.out_file','inputspec.func')]),
-        (mytmpfilt,mycens,[('outputspec.func_tmplfilt','inputspec.func')]),
-        (mymc,mycens,[('outputspec.FD_file','inputspec.FD')]),
-        (mybet,mymedangcor, [('outputspec.brain_mask','inputspec.mask')]),
-        (mycens, mymedangcor, [('outputspec.scrubbed_image', 'inputspec.realigned_file')]),
+        (mybet, mynuisscor, [('outputspec.brain', 'inputspec.in_file')]),
+        (mybet, mymedangcor, [('outputspec.brain_mask', 'inputspec.mask')]),
+        (mynuisscor, mymedangcor, [('outputspec.out_file', 'inputspec.realigned_file')]),
+        (mymedangcor, mytmpfilt, [('outputspec.final_func', 'inputspec.func')]),
+
         # outputspec
         (mymc, outputspec, [('outputspec.func_out_file', 'func_mc')]),
         (mynuisscor, outputspec, [('outputspec.out_file', 'func_mc_nuis')]),
-        (mytmpfilt, outputspec, [('outputspec.func_tmplfilt', 'func_mc_nuis_bpf')]),
-        (mycens, outputspec, [('outputspec.scrubbed_image', 'func_mc_nuis_bpf_cens')]),
-        (mymedangcor, outputspec, [('outputspec.final_func', 'func_mc_nuis_bpf_cens_medang')]),
+        (mymedangcor, outputspec, [('outputspec.final_func', 'func_mc_nuis_medang')]),
+        (mytmpfilt, outputspec, [('outputspec.func_tmplfilt', 'func_mc_nuis_medang_bpf')]),
+
         # non-image data:
-        (mycens, outputspec, [('outputspec.FD', 'FD')])
                    ])
 
     return wf_mc

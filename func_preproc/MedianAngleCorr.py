@@ -1,4 +1,4 @@
-def median_angle_correct(target_angle_deg, realigned_file,mask):
+def median_angle_correct(target_angle_deg, realigned_file, mask):
     """
     Performs median angle correction on fMRI data.  Median angle correction algorithm
     based on [1]_.
@@ -53,8 +53,15 @@ def median_angle_correct(target_angle_deg, realigned_file,mask):
     # mask = (data != 0).sum(-1) != 0
     masknii = nb.load(mask)
     maskdata = masknii.get_data().astype(np.bool)
+
+    # additionally mask out all-zero voxels, as well
+    STD=np.std(data, axis=3)
+    maskdata[STD==0] = False
+
     #maskdata_bool = (maskdata!= 0).sum(-1) != 0
     Y = data[maskdata].T
+
+
 
     Yc = Y - np.tile(Y.mean(0), (Y.shape[0], 1))
     Yn = Yc / np.tile(np.sqrt((Yc * Yc).sum(0)), (Yc.shape[0], 1))

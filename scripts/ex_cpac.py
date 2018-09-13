@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# This is a PUMI pipeline closely replicating the results of C-PAC, with the configuration file
+# This is a PUMI pipeline closely replicating the results of C-PAC (v.1.0.2), with the configuration file etc/cpac_conf.yml
 
 import sys
 # sys.path.append("/home/balint/Dokumentumok/phd/github/") #PUMI should be added to the path by install or by the developer
@@ -18,7 +18,8 @@ import PUMI.func_preproc.func2standard as transform
 import PUMI.utils.utils_convert as utils_convert
 import os
 import PUMI.utils.globals as globals
-#import PUMI.utils.addimages as adding
+import PUMI.connectivity.TimeseriesExtractor as tsext
+import PUMI.connectivity.NetworkBuilder as nw
 
 # parse command line arguments
 if (len(sys.argv) <= 2):
@@ -32,9 +33,30 @@ if (len(sys.argv) <= 2):
 if (len(sys.argv) > 3):
     globals._SinkDir_ = sys.argv[3]
 
+if (len(sys.argv) > 4):
+    _MISTDIR_=sys.argv[4]
+else:
+    _MISTDIR_ = '/home/analyser/Documents/mistatlases/'
+
 ##############################
-_regtype_ = globals._RegType_.FSL
-#_regtype_ = globals._RegType_.ANTS
+globals._brainref="/data/standard/MNI152_T1_2mm_brain.nii.gz"
+globals._headref="/data/standard/MNI152_T1_2mm.nii.gz"
+globals._brainref_mask="/data/standard/MNI152_T1_2mm_brain_mask_dil.nii.gz"
+##############################
+_refvolplace_ = globals._RefVolPos_.first
+
+
+# specify atlas for network construction:
+# name of labelmap nii (or list of probmaps)
+_ATLAS_FILE = _MISTDIR_ + '/Parcellations/MIST_122.nii.gz'
+# a list of labels, where index+1 corresponds to the label in the labelmap
+_ATLAS_LABELS = tsext.mist_labels(mist_directory=_MISTDIR_, resolution="122")
+# a list of labels, where index i corresponds to the module of the i+1th region, this is optional
+_ATLAS_MODULES = tsext.mist_modules(mist_directory=_MISTDIR_, resolution="122")
+##############################
+##############################
+#_regtype_ = globals._RegType_.FSL
+_regtype_ = globals._RegType_.ANTS
 ##############################
 
 # create data grabber
@@ -71,19 +93,49 @@ myanatproc.inputs.inputspec.bet_vertical_gradient = -0.3 # feel free to adjust, 
 mybbr = bbr.bbr_workflow()
 # Add arbitrary number of nii images wthin the same space. The default is to add csf and wm masks for anatcompcor calculation.
 #myadding=adding.addimgs_workflow(numimgs=2)
+
+# TODO_ready: erode compcor noise mask!!!!
+# NOTE: more CSF voxels are retained for compcor when only WM signal is eroded and csf is adde to it
+erode_mask = pe.MapNode(fsl.ErodeImage(),
+                        iterfield=['in_file'],
+                        name="erode_wm_mask")
+
 add_masks = pe.MapNode(fsl.ImageMaths(op_string=' -add'),
                        iterfield=['in_file', 'in_file2'],
                        name="addimgs")
 
-# TODO_ready: erode compcor noise mask!!!!
-erode_mask = pe.MapNode(fsl.ErodeImage(),
-                        iterfield=['in_file'],
-                        name="erode_compcor_mask")
-
 def pickindex(vec, i):
     return [x[i] for x in vec]
 
-myfuncproc = funcproc.FuncProc_cpac()
+myfuncproc = funcproc.FuncProc_cpac(stdrefvol="mean")
+
+#create atlas matching this space
+resample_atlas = pe.Node(interface=afni.Resample(outputtype = 'NIFTI_GZ',
+                                          in_file=_MISTDIR_ + "/Parcellations/MIST_7.nii.gz",
+                                          master=globals._FSLDIR_ + '/data/standard/MNI152_T1_3mm_brain.nii.gz'),
+                         name='resample_atlas') #default interpolation is nearest neighbour
+
+# standardize what you need
+myfunc2mni = transform.func2mni(stdreg=_regtype_, carpet_plot="1_original", wf_name="func2mni_1")
+myfunc2mni_nuis = transform.func2mni(stdreg=_regtype_, carpet_plot="2_nuis", wf_name="func2mni_2_nuis")
+myfunc2mni_nuis_medang = transform.func2mni(stdreg=_regtype_, carpet_plot="3_nuis_medang", wf_name="func2mni_3_nuis_medang")
+myfunc2mni_nuis_medang_bpf = transform.func2mni(stdreg=_regtype_, carpet_plot="5_nuis_medang_bptf", wf_name="func2mni_4_nuis_medang_bptf")
+
+###################
+
+#create matrices
+myextract = tsext.extract_timeseries()
+myextract.inputs.inputspec.atlas_file = _ATLAS_FILE
+myextract.inputs.inputspec.labels = _ATLAS_LABELS
+myextract.inputs.inputspec.modules = _ATLAS_MODULES
+
+measure = "tangent"
+mynetmat = nw.build_netmat(wf_name=measure.replace(" ", "_"))
+mynetmat.inputs.inputspec.measure = measure
+
+
+totalWorkflow = nipype.Workflow('preprocess_cpac')
+totalWorkflow.base_dir = '.'
 
 # anatomical part and func2anat
 totalWorkflow.connect([
@@ -113,11 +165,69 @@ totalWorkflow.connect([
 totalWorkflow.connect([
     (reorient_func, myfuncproc,
      [('out_file', 'inputspec.func')]),
+    (mybbr, erode_mask,
+     [('outputspec.wm_mask_in_funcspace','in_file')]),
+
     (mybbr, add_masks,
-     [('outputspec.ventricle_mask_in_funcspace','in_file'),
-      ('outputspec.wm_mask_in_funcspace','in_file2')]),
-    (add_masks, erode_mask,
-     [('out_file','in_file')]),
-    (erode_mask, myfuncproc,
-     [('out_file','inputspec.cc_noise_roi')])
+     [('outputspec.ventricle_mask_in_funcspace','in_file')]),
+    (erode_mask, add_masks,
+     [('out_file','in_file2')]),
+
+    (add_masks, myfuncproc,
+     [('out_file','inputspec.cc_noise_roi')]),
+
+    # push func to std space
+    (myfuncproc, myfunc2mni,
+     [('outputspec.func_mc', 'inputspec.func'),
+      ('outputspec.FD', 'inputspec.confounds')]),
+    (mybbr, myfunc2mni,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
+    (myanatproc, myfunc2mni,
+     [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
+      # ('outputspec.std_template', 'inputspec.reference_brain'),
+      ('outputspec.brain', 'inputspec.anat')]),
+    (resample_atlas, myfunc2mni,
+     [('out_file', 'inputspec.atlas')]),
+
+    (myfuncproc, myfunc2mni_nuis,
+     [('outputspec.func_mc_nuis', 'inputspec.func'),
+      ('outputspec.FD', 'inputspec.confounds')]),
+    (mybbr, myfunc2mni_nuis,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
+    (myanatproc, myfunc2mni_nuis,
+     [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
+      # ('outputspec.std_template', 'inputspec.reference_brain'),
+      ('outputspec.brain', 'inputspec.anat')]),
+    (resample_atlas, myfunc2mni_nuis,
+     [('out_file', 'inputspec.atlas')]),
+
+    (myfuncproc, myfunc2mni_nuis_medang,
+     [('outputspec.func_mc_nuis_medang', 'inputspec.func'),
+      ('outputspec.FD', 'inputspec.confounds')]),
+    (mybbr, myfunc2mni_nuis_medang,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
+    (myanatproc, myfunc2mni_nuis_medang,
+     [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
+      # ('outputspec.std_template', 'inputspec.reference_brain'),
+      ('outputspec.brain', 'inputspec.anat')]),
+    (resample_atlas, myfunc2mni_nuis_medang,
+     [('out_file', 'inputspec.atlas')]),
+
+    (myfuncproc, myfunc2mni_nuis_medang_bpf,
+     [('outputspec.func_mc_nuis_medang_bpf', 'inputspec.func'),
+      ('outputspec.FD', 'inputspec.confounds')]),
+    (mybbr, myfunc2mni_nuis_medang_bpf,
+     [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
+    (myanatproc, myfunc2mni_nuis_medang_bpf,
+     [('outputspec.anat2mni_warpfield', 'inputspec.nonlinear_reg_mtrx'),
+      # ('outputspec.std_template', 'inputspec.reference_brain'),
+      ('outputspec.brain', 'inputspec.anat')]),
+    (resample_atlas, myfunc2mni_nuis_medang_bpf,
+     [('out_file', 'inputspec.atlas')])
+
     ])
+
+totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
+totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
+totalWorkflow.write_graph('graph.dot', graph2use='colored')
+totalWorkflow.run(plugin='MultiProc')

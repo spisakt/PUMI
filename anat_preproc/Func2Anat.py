@@ -91,7 +91,7 @@ def bbr_workflow(SinkTag="func_preproc", wf_name="func2anat"):
     vent_bb_mask = pe.MapNode(interface=fsl.ImageMaths(),
                             iterfield=['in_file'],
                             name='vent_bb_mask')
-    vent_bb_mask.inputs.op_string = '-thr 0.5 -bin'
+    vent_bb_mask.inputs.op_string = '-thr 0.8 -bin -ero -dilM'  # stricter threshold and some morphology for compcor
 
     # add the CSF and WM masks
     #add_masks=pe.MapNode(interface=fsl.ImageMaths(),
