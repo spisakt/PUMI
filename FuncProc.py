@@ -180,6 +180,7 @@ def FuncProc_cpac(stdrefvol="mid",SinkTag="func_preproc", wf_name="funcproc"):
         (mytmpfilt, outputspec, [('outputspec.func_tmplfilt', 'func_mc_nuis_medang_bpf')]),
 
         # non-image data:
+        (mymc, outputspec, [('outputspec.FD_file', 'FD')]),
                    ])
 
     return wf_mc

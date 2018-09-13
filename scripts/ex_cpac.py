@@ -227,6 +227,12 @@ totalWorkflow.connect([
 
     ])
 
+# connect network analysis part
+totalWorkflow.connect(myfunc2mni_nuis_medang_bpf, 'outputspec.func_std', myextract, 'inputspec.std_func')
+totalWorkflow.connect(myextract, 'outputspec.timeseries_file', mynetmat, 'inputspec.timeseries')
+totalWorkflow.connect(myextract, 'outputspec.reordered_modules', mynetmat, 'inputspec.modules')
+totalWorkflow.connect(myextract, 'outputspec.relabelled_atlas_file', mynetmat, 'inputspec.atlas')
+
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
 totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
 totalWorkflow.write_graph('graph.dot', graph2use='colored')
