@@ -252,7 +252,7 @@ def calculate_upperpercent(in_file,threshold, frames_before=1, frames_after=2):
         # remove following frames
         count = 1
         while count <= frames_after:
-            if i+count <= len(powersFD_data):  # do not censor unexistent data
+            if i+count < len(powersFD_data):  # do not censor unexistent data
                 extra_indices.append(i + count)
             count += 1
 
