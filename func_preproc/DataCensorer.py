@@ -233,7 +233,7 @@ def calculate_upperpercent(in_file,threshold, frames_before=1, frames_after=2):
     from numpy import loadtxt
     # Receives the FD file to calculate the upper percent of violating volumes
     powersFD_data = loadtxt(in_file)
-    powersFD_data[0] = 0
+    powersFD_data[0] = 0    # TODO: whay do we need this
     sortedpwrsFDdata = sorted(powersFD_data)
     limitvalueindex = int(len(sortedpwrsFDdata) * threshold / 100)
     limitvalue = sortedpwrsFDdata[len(sortedpwrsFDdata) - limitvalueindex]
@@ -252,14 +252,14 @@ def calculate_upperpercent(in_file,threshold, frames_before=1, frames_after=2):
         # remove following frames
         count = 1
         while count <= frames_after:
-            extra_indices.append(i + count)
+            if i+count <= len(powersFD_data):  # do not censor unexistent data
+                extra_indices.append(i + count)
             count += 1
 
     indices_out = list(set(frames_out) | set(extra_indices))
     indices_out.sort()
     frames_out_idx=indices_out
     frames_in_idx=np.setdiff1d(frames_in_idx, indices_out)
-    count = np.float(frames_in_idx.size)
     frames_in_idx_str = ','.join(str(x) for x in frames_in_idx)
     frames_in_idx = frames_in_idx_str.split()
 
