@@ -56,8 +56,8 @@ reorient_struct = pe.MapNode(fsl.utils.Reorient2Std(),
                       name="reorient_struct")
 
 mybet = bet.bet_workflow()
-mybet.get_node( "inputspec").iterables = [("fract_int_thr", [0.2, 0.3, 0.4, 0.5, 0.6, 0.7]),
-                                          ("vertical_gradient", [-0.3, 0, 0.3])]  # set if needed
+mybet.get_node( "inputspec").iterables = [("fract_int_thr", [ 0.3, 0.35, 0.4, 0.5]),
+                                          ("vertical_gradient", [-0.3, 0.25, -0.2, 0])]  # set if needed
 
 ###################################################################################################
 # PIPELINE

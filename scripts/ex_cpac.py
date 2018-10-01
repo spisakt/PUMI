@@ -39,9 +39,9 @@ else:
     _MISTDIR_ = '/home/analyser/Documents/mistatlases/'
 
 ##############################
-globals._brainref="/data/standard/MNI152_T1_2mm_brain.nii.gz"
-globals._headref="/data/standard/MNI152_T1_2mm.nii.gz"
-globals._brainref_mask="/data/standard/MNI152_T1_2mm_brain_mask_dil.nii.gz"
+globals._brainref="/data/standard/MNI152_T1_1mm_brain.nii.gz"
+globals._headref="/data/standard/MNI152_T1_1mm.nii.gz"
+globals._brainref_mask="/data/standard/MNI152_T1_1mm_brain_mask_dil.nii.gz"
 ##############################
 _refvolplace_ = globals._RefVolPos_.first
 
@@ -86,7 +86,7 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
                       name="reorient_func")
 
 myanatproc = anatproc.AnatProc(stdreg=_regtype_)
-myanatproc.inputs.inputspec.bet_fract_int_thr = 0.3  # feel free to adjust, a nice bet is important!
+myanatproc.inputs.inputspec.bet_fract_int_thr = 0.35  # feel free to adjust, a nice bet is important!
 myanatproc.inputs.inputspec.bet_vertical_gradient = -0.3 # feel free to adjust, a nice bet is important!
 # try scripts/opt_bet.py to optimise these parameters
 
@@ -107,7 +107,8 @@ add_masks = pe.MapNode(fsl.ImageMaths(op_string=' -add'),
 def pickindex(vec, i):
     return [x[i] for x in vec]
 
-myfuncproc = funcproc.FuncProc_cpac(stdrefvol="mean")
+#myfuncproc = funcproc.FuncProc_cpac(stdrefvol="mean")
+myfuncproc = funcproc.FuncProc()
 
 #create atlas matching this space
 resample_atlas = pe.Node(interface=afni.Resample(outputtype = 'NIFTI_GZ',
@@ -214,7 +215,7 @@ totalWorkflow.connect([
   #   [('out_file', 'inputspec.atlas')]),
 
     (myfuncproc, myfunc2mni_nuis_medang_bpf,
-     [('outputspec.func_mc_nuis_medang_bpf', 'inputspec.func'),
+     [('outputspec.func_mc_nuis_bpf_cens_medang', 'inputspec.func'),
       ('outputspec.FD', 'inputspec.confounds')]),
     (mybbr, myfunc2mni_nuis_medang_bpf,
      [('outputspec.func_to_anat_linear_xfm', 'inputspec.linear_reg_mtrx')]),
@@ -236,4 +237,4 @@ totalWorkflow.connect(myextract, 'outputspec.relabelled_atlas_file', mynetmat, '
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
 totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
 totalWorkflow.write_graph('graph.dot', graph2use='colored')
-totalWorkflow.run(plugin='MultiProc')
+totalWorkflow.run(plugin='Linear')
