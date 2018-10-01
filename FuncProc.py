@@ -11,6 +11,7 @@ import PUMI.func_preproc.TemporalFiltering as tmpfilt
 import PUMI.func_preproc.DataCensorer as cens
 import PUMI.func_preproc.MedianAngleCorr as medangcor
 import nipype.interfaces.utility as utility
+import nipype.interfaces.afni as afni
 import PUMI.utils.globals as globals
 import os
 
@@ -50,7 +51,7 @@ def FuncProc(stdrefvol="mid",SinkTag="func_preproc", wf_name="funcproc"):
     # build the actual pipeline
     #myonevol = onevol.onevol_workflow(SinkDir=SinkDir)
     mybet = bet.bet_workflow(SinkTag="func_preproc", fmri=True, wf_name="brain_extraction_func")
-    mymc = mc.mc_workflow(reference_vol=stdrefvol)
+    mymc = mc.mc_workflow_fsl(reference_vol=stdrefvol)
     mycmpcor = cmpcor.compcor_workflow()
     myconc = conc.concat_workflow(numconcat=2)
     mynuisscor = nuisscorr.nuissremov_workflow()
@@ -181,6 +182,84 @@ def FuncProc_cpac(stdrefvol="mid",SinkTag="func_preproc", wf_name="funcproc"):
 
         # non-image data:
         (mymc, outputspec, [('outputspec.FD_file', 'FD')]),
+                   ])
+
+    return wf_mc
+
+def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc_dspk_afni", wf_name="func_preproc_dspk_afni"):
+    """
+        Performs processing of functional (resting-state) images:
+
+        Images should be already reoriented, e.g. with fsl fslreorient2std (see scripts/ex_pipeline.py)
+
+        Workflow inputs:
+            :param func: The functional image file.
+            :param SinkDir: where to write important ouputs
+            :param SinkTag: The output directory in which the returned images (see workflow outputs) could be found.
+
+        Workflow outputs:
+            :param
+
+
+
+            :return: anatproc_workflow
+
+
+        Tamas Spisak
+        tamas.spisak@uk-essen.de
+        2018
+
+        """
+
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
+    if not os.path.exists(SinkDir):
+        os.makedirs(SinkDir)
+
+    # Basic interface class generates identity mappings
+    inputspec = pe.Node(utility.IdentityInterface(fields=['func', 'cc_noise_roi']),
+                        name='inputspec')
+
+    # build the actual pipeline
+    #myonevol = onevol.onevol_workflow(SinkDir=SinkDir)
+    mybet = bet.bet_workflow(SinkTag="func_preproc", fmri=True, wf_name="brain_extraction_func")
+    mymc = mc.mc_workflow_fsl(reference_vol=stdrefvol)
+
+    mydespike = pe.MapNode(afni.Despike(outputtype="NIFTI_GZ"),  # I do it after motion correction...
+                           iterfield=['in_file'],
+                           name="DeSpike")
+
+    mycmpcor = cmpcor.compcor_workflow() # to  WM+CSF signal
+    myconc = conc.concat_workflow(numconcat=2)
+    mynuisscor = nuisscorr.nuissremov_workflow() # regress out 5 compcor variables and the Friston24
+    #mymedangcor = medangcor.mac_workflow() #skip it this time
+    mytmpfilt = tmpfilt.tmpfilt_workflow(highpass_Hz=0.008, lowpass_Hz=0.08) #will be done by the masker?
+
+    # Basic interface class generates identity mappings
+    outputspec = pe.Node(utility.IdentityInterface(fields=[
+                                                           'func_preprocessed',
+                                                            # non-image data
+                                                           'FD'
+                                                           ]),
+                         name='outputspec')
+    wf_mc = nipype.Workflow(wf_name)
+
+    wf_mc.connect([
+        (inputspec, mybet,
+         [('func', 'inputspec.in_file')]),
+        (mybet, mymc,
+         [('outputspec.brain', 'inputspec.func')]),
+        (mymc, mydespike, [('outputspec.func_out_file', 'in_file')]),
+        (mydespike, mycmpcor, [('out_file', 'inputspec.func_aligned')]),
+        (inputspec, mycmpcor, [('cc_noise_roi', 'inputspec.mask_file')]),
+        (mycmpcor,myconc, [('outputspec.components_file','inputspec.par1')]),
+        (mymc, myconc, [('outputspec.first24_file', 'inputspec.par2')]),
+        (myconc,mynuisscor, [('outputspec.concat_file', 'inputspec.design_file')]),
+        (mydespike, mynuisscor, [('out_file', 'inputspec.in_file')]),
+        (mynuisscor,mytmpfilt,[('outputspec.out_file','inputspec.func')]),
+
+        (mytmpfilt,outputspec,[('outputspec.func_tmplfilt','func_preprocessed')]),
+        # non-image data:
+        (mymc, outputspec, [('outputspec.FD_file', 'FD')])
                    ])
 
     return wf_mc

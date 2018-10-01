@@ -110,6 +110,7 @@ def AnatProc(stdreg, SinkTag="anat_preproc", wf_name="anatproc"):
                                                            'parvol_csf',
                                                            'partvol_map',
                                                            'anat2mni_warpfield',
+                                                           'mni2anat_warpfield',
                                                            'std_brain',
                                                            'stdregtype',
                                                            'std_template']),
@@ -167,11 +168,13 @@ def AnatProc(stdreg, SinkTag="anat_preproc", wf_name="anatproc"):
         totalWorkflow.connect(resample_std_ventricle, 'out_file', unwarp_ventricle, 'in_file')
         totalWorkflow.connect(inputspec, 'anat', unwarp_ventricle, 'ref_file')
         totalWorkflow.connect(myanat2mni, 'outputspec.invnonlinear_xfm', unwarp_ventricle, 'field_file')
+        totalWorkflow.connect(myanat2mni, 'outputspec.invnonlinear_xfm', outputspec, 'mni2anat_warpfield')
         totalWorkflow.connect(unwarp_ventricle, 'out_file', ventricle_mask, 'in_file2')
     else: #ANTs
         totalWorkflow.connect(resample_std_ventricle, 'out_file', unwarp_ventricle, 'input_image')
         totalWorkflow.connect(inputspec, 'anat', unwarp_ventricle, 'reference_image')
         totalWorkflow.connect(myanat2mni, 'outputspec.invnonlinear_xfm', unwarp_ventricle, 'transforms')
+        totalWorkflow.connect(myanat2mni, 'outputspec.invnonlinear_xfm', outputspec, 'mni2anat_warpfield')
         totalWorkflow.connect(unwarp_ventricle, 'output_image', ventricle_mask, 'in_file2')
 
     return totalWorkflow

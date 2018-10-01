@@ -347,7 +347,7 @@ def anat2mni_ants_workflow_harcoded(SinkTag="anat_preproc", wf_name="anat2mni_an
                                         output_names=['transform_composite',
                                                       'transform_inverse_composite',
                                                       'warped_image'],
-                                        function=hardcoded_reg_cpac), #temporal!!
+                                        function=hardcoded_reg_fast),
                      iterfield=['anatomical_brain', 'anatomical_skull'],
                      name="ANTS_hardcoded")
 

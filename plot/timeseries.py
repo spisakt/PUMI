@@ -1,6 +1,6 @@
 
 
-def plot_carpet_ts(timeseries, modules, atlas=None, nskip=0, size=(950, 800),
+def plot_carpet_ts(timeseries, modules, atlas=None, background_file=None, nskip=0, size=(950, 800),
                 subplot=None, title=None, output_file="regts.png"):
     """
     Adapted from: https://github.com/poldracklab/niworkflows
@@ -122,7 +122,8 @@ def plot_carpet_ts(timeseries, modules, atlas=None, nskip=0, size=(950, 800),
         gslegend = mgs.GridSpecFromSubplotSpec(
             5, 1, subplot_spec=gs[2], wspace=0.0, hspace=0.0)
 
-        background_file = glb._FSLDIR_ + "/data/standard/MNI152_T1_3mm_brain.nii.gz" #TODO: works only for 3mm atlas
+        if not background_file:
+            background_file = glb._FSLDIR_ + "/data/standard/MNI152_T1_3mm_brain.nii.gz" #TODO: works only for 3mm atlas
         background = nb.load(background_file)
         atlas = nb.load(atlas)
 

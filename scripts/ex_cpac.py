@@ -107,7 +107,8 @@ add_masks = pe.MapNode(fsl.ImageMaths(op_string=' -add'),
 def pickindex(vec, i):
     return [x[i] for x in vec]
 
-myfuncproc = funcproc.FuncProc_cpac(stdrefvol="mean")
+#myfuncproc = funcproc.FuncProc_cpac(stdrefvol="mean")
+myfuncproc = funcproc.FuncProc()
 
 #create atlas matching this space
 resample_atlas = pe.Node(interface=afni.Resample(outputtype = 'NIFTI_GZ',
