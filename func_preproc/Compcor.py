@@ -47,6 +47,7 @@ def compcor_workflow(SinkTag="func_preproc", wf_name="compcor"):
     import PUMI.utils.utils_convert as utils_convert
     import nipype.interfaces.io as io
     import nipype.interfaces.utility as utility
+    import nipype.interfaces.fsl as fsl
     import PUMI.utils.QC as qc
     import PUMI.utils.globals as globals
 
@@ -66,6 +67,13 @@ def compcor_workflow(SinkTag="func_preproc", wf_name="compcor"):
                  name='ds_nii')
     ds_nii.inputs.base_directory = SinkDir
     ds_nii.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
+
+    # standardize timeseries prior to compcor. added by tspisak
+    scale = pe.MapNode(interface=utility.Function(input_names=['in_file'],
+                                                  output_names=['scaled_file'],
+                                                  function=scale_vol),
+                       iterfield=['in_file'],
+                       name='scale_func')
 
     # Calculate compcor files
     compcor=pe.MapNode(interface=cnf.ACompCor(pre_filter='polynomial',header_prefix="",num_components=5),
@@ -97,7 +105,8 @@ def compcor_workflow(SinkTag="func_preproc", wf_name="compcor"):
 
     # Create a workflow to connect all those nodes
     analysisflow = nipype.Workflow(wf_name)
-    analysisflow.connect(inputspec, 'func_aligned', compcor, 'realigned_file')
+    analysisflow.connect(inputspec, 'func_aligned', scale, 'in_file')
+    analysisflow.connect(scale, 'scaled_file', compcor, 'realigned_file')
     analysisflow.connect(inputspec, 'func_aligned', TRvalue, 'in_file')
     analysisflow.connect(TRvalue, 'TR', func_str2float, 'str')
     analysisflow.connect(func_str2float, 'float', compcor, 'repetition_time')
@@ -113,3 +122,22 @@ def compcor_workflow(SinkTag="func_preproc", wf_name="compcor"):
     analysisflow.connect(inputspec, 'mask_file', ds_nii, 'compcor_noise_mask')
 
     return analysisflow
+
+
+def scale_vol(in_file):
+    import nibabel as nb
+    import numpy as np
+    import os
+    img=nb.load(in_file)
+    DATA=img.get_data()
+    STD=np.std(DATA, axis=3)
+    STD[STD == 0] = 1  # divide with 1
+    MEAN=np.mean(DATA, axis=3)
+
+    for i in range(DATA.shape[3]):
+        DATA[:,:,:,i] = (DATA[:,:,:,i]-MEAN)/STD
+
+    ret = nb.Nifti1Image(DATA, img.affine, img.header)
+    out_file = "scaled_func.nii.gz"
+    nb.save(ret, out_file)
+    return os.path.join(os.getcwd(), out_file)

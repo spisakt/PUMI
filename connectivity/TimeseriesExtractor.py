@@ -53,10 +53,10 @@ def relabel_atlas(atlas_file, modules, labels):
     # maybe this is a bit complicated, but believe me it does what it should
 
     data = img.get_data()
-    newdata = lut[np.array(data, dtype=int)]  # apply lookup table to swap labels
+    newdata = lut[np.array(data, dtype=np.int32)]  # apply lookup table to swap labels
     #newdata=np.all(lut[data.astype(int)] == np.take(lut, data.astype(int)))
 
-    img = nib.Nifti1Image(newdata, img.get_affine())
+    img = nib.Nifti1Image(newdata.astype(np.float64), img.get_affine())
     nib.save(img, 'relabeled_atlas.nii.gz')
 
     out = reordered.reset_index()
@@ -65,6 +65,82 @@ def relabel_atlas(atlas_file, modules, labels):
 
     return os.path.join(os.getcwd(), 'relabeled_atlas.nii.gz'), reordered['modules'].values.tolist(), reordered['labels'].values.tolist(), os.path.join(os.getcwd(), 'newlabels.tsv')
     #return relabeled atlas labelmap file, reordered module names, reordered labels (region names), newlabels_file
+
+
+def myExtractor(labels, labelmap, func, mask, global_signal=True, pca=False, outfile="reg_timeseries.tsv"):
+
+    import nibabel as nib
+    import pandas as pd
+    import numpy as np
+
+    func_data = nib.load(func).get_data()
+    labelmap_data = nib.load(labelmap).get_data()
+    mask_data = nib.load(mask).get_data()
+
+    labelmap_data[mask_data==0] = 0 # background
+
+    outlab=nib.Nifti1Image(labelmap_data, nib.load(labelmap).affine)
+    nib.save(outlab, "test.nii.gz")
+
+    ret=[]
+
+    if global_signal:
+        indices = np.argwhere(mask_data > 0)
+        X = []
+        for i in indices:
+            x = func_data[i[0], i[1], i[2], :]
+            if np.std(x) > 0.000001:
+                X.append(x.tolist())
+        if pca:
+            import sklearn.decomposition as decomp
+            from sklearn.preprocessing import StandardScaler
+            X = StandardScaler().fit_transform(np.transpose(X))
+            PCA = decomp.PCA(n_components=1, svd_solver="arpack")
+            x = PCA.fit_transform(X).flatten()
+        else:
+            #from sklearn.preprocessing import StandardScaler
+            #X = StandardScaler().fit_transform(np.transpose(X))
+            x = np.mean(X, axis=0)
+        ret.append(x)
+
+    for l in range(1,len(labels)+1):
+        indices=np.argwhere(labelmap_data == l)
+        X=[]
+        for i in indices:
+            x=func_data[i[0], i[1], i[2], :]
+            if np.std(x) > 0.000001:
+                X.append(x.tolist())
+        X=np.array(X)
+        if X.shape[0]==0:
+            x=np.repeat(0,func_data.shape[3])
+        elif X.shape[0]==1:
+            x=X.flatten()
+        elif pca:
+            import sklearn.decomposition as decomp
+            from sklearn.preprocessing import StandardScaler
+            X = StandardScaler().fit_transform(np.transpose(X))
+            PCA=decomp.PCA(n_components=1, svd_solver="arpack")
+            x=PCA.fit_transform(X).flatten()
+        else:
+            #from sklearn.preprocessing import StandardScaler
+            #X = StandardScaler().fit_transform(np.transpose(X))
+            x=np.mean(X, axis=0)
+        ret.append(x)
+
+    ret = np.transpose(np.array(ret))
+
+    if global_signal:
+        labels = ["GlobSig"] + labels
+
+    import pandas as pd
+    ret=pd.DataFrame(data=ret,
+                     columns=labels)
+
+    ret.to_csv(outfile, sep="\t", index=False)
+
+    import os
+    return os.path.join(os.getcwd(), outfile), labels
+
 
 def extract_timeseries(SinkTag="connectivity", wf_name="extract_timeseries", modularise=True):
     ########################################################################

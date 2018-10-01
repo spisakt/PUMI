@@ -85,7 +85,7 @@ def bbr_workflow(SinkTag="func_preproc", wf_name="func2anat"):
     gm_bb_mask = pe.MapNode(interface=fsl.ImageMaths(),
                              iterfield=['in_file'],
                              name='gm_bb_mask')
-    gm_bb_mask.inputs.op_string = '-thr 0.5 -bin'
+    gm_bb_mask.inputs.op_string = '-thr 0.1 -bin' # liberal mask to capture all gm signal
 
     # ventricle probability map is thresholded and masked
     vent_bb_mask = pe.MapNode(interface=fsl.ImageMaths(),
@@ -157,6 +157,7 @@ def bbr_workflow(SinkTag="func_preproc", wf_name="func2anat"):
 
     # Define outputs of the workflow
     outputspec = pe.Node(utility.IdentityInterface(fields=[ 'func_sample2anat',
+                                                            'example_func',
                                                             'func_to_anat_linear_xfm',
                                                             'anat_to_func_linear_xfm',
                                                             'csf_mask_in_funcspace',
@@ -198,6 +199,7 @@ def bbr_workflow(SinkTag="func_preproc", wf_name="func2anat"):
     analysisflow.connect(reg_anatmask_to_func2,'out_file',outputspec, 'wm_mask_in_funcspace')
     analysisflow.connect(reg_anatmask_to_func3, 'out_file', outputspec, 'gm_mask_in_funcspace')
     analysisflow.connect(reg_anatmask_to_func4, 'out_file', outputspec, 'ventricle_mask_in_funcspace')
+    analysisflow.connect(myonevol, 'outputspec.func1vol', outputspec, 'example_func')
     analysisflow.connect(convertmatrix, 'out_file',outputspec,'anat_to_func_linear_xfm')
     analysisflow.connect(bbreg_func_to_anat, 'out_file', ds, "func2anat")
     analysisflow.connect(bbreg_func_to_anat, 'out_file', myqc, 'inputspec.bg_image')

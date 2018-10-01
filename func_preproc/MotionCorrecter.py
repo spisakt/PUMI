@@ -447,7 +447,6 @@ def calc_friston_twenty_four(in_file):
 
         return new_file
 
-
 def calculate_FD_P(in_file):
     """
 
