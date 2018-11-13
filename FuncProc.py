@@ -56,7 +56,7 @@ def FuncProc(stdrefvol="mid",SinkTag="func_preproc", wf_name="funcproc"):
     myconc = conc.concat_workflow(numconcat=2)
     mynuisscor = nuisscorr.nuissremov_workflow()
     mytmpfilt = tmpfilt.tmpfilt_workflow(highpass_Hz=0.008, lowpass_Hz=0.08)
-    mycens = cens.datacens_workflow()
+    mycens = cens.datacens_workflow_percent()
     mymedangcor = medangcor.mac_workflow()
 
     # Basic interface class generates identity mappings

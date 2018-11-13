@@ -32,6 +32,16 @@ def txt2MeanTxt(in_file, axis=None):
     np.savetxt('mean.txt', [mean])
     return os.getcwd() + '/mean.txt'
 
+def txt2MaxTxt(in_file, axis=None):
+    import numpy as np
+    import os
+    data = np.loadtxt(in_file, ) #header -> dropline
+    mean = data.max(axis=axis)
+    print '******************'
+    print mean
+    np.savetxt('max.txt', [mean])
+    return os.getcwd() + '/max.txt'
+
 
 ###############################################
 
@@ -58,3 +68,7 @@ Sec2sigmaV = Function(input_names=['TR', 'sec'],
 Txt2meanTxt = Function(input_names=['in_file', 'axis'],
                        output_names=['mean_file'],
                        function=txt2MeanTxt)
+
+Txt2maxTxt = Function(input_names=['in_file', 'axis'],
+                       output_names=['max_file'],
+                       function=txt2MaxTxt)

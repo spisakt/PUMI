@@ -126,19 +126,31 @@ def mc_workflow_fsl(reference_vol="mid",
                                   iterfield=['in_file'],
                                   name='calculate_FD_Jenkinson')
 
-    # compute mean FD
+    # compute mean and max FD
     meanFD = pe.MapNode(interface=utils_math.Txt2meanTxt,
                         iterfield=['in_file'],
                         name='meanFD')
     meanFD.inputs.axis = 0  # global mean
 
+    maxFD = pe.MapNode(interface=utils_math.Txt2maxTxt,
+                        iterfield=['in_file'],
+                        name='maxFD')
+    maxFD.inputs.axis = 0  # global mean
+
     pop_FD = pe.Node(interface=utils_convert.List2TxtFileOpen,
                      name='pop_FD')
+    pop_FDmax = pe.Node(interface=utils_convert.List2TxtFileOpen,
+                     name='pop_FDmax')
 
     # save data out with Datasink
     ds_fd = pe.Node(interface=io.DataSink(), name='ds_pop_fd')
     ds_fd.inputs.regexp_substitutions = [("(\/)[^\/]*$", "FD.txt")]
     ds_fd.inputs.base_directory = SinkDir
+
+    # save data out with Datasink
+    ds_fd_max = pe.Node(interface=io.DataSink(), name='ds_pop_fd_max')
+    ds_fd_max.inputs.regexp_substitutions = [("(\/)[^\/]*$", "FD_max.txt")]
+    ds_fd_max.inputs.base_directory = SinkDir
 
     plot_motion_rot = pe.MapNode(
         interface=fsl.PlotMotionParams(in_source='fsl'),
@@ -216,6 +228,10 @@ def mc_workflow_fsl(reference_vol="mid",
     analysisflow.connect(calculate_FD, 'out_file', ds_text, 'mc_fd')
     analysisflow.connect(meanFD, 'mean_file', pop_FD, 'in_list')
     analysisflow.connect(pop_FD, 'txt_file', ds_fd, 'pop')
+
+    analysisflow.connect(calculate_FD, 'out_file', maxFD, 'in_file')
+    analysisflow.connect(maxFD, 'max_file', pop_FDmax, 'in_list')
+    analysisflow.connect(pop_FDmax, 'txt_file', ds_fd_max, 'pop')
 
     return analysisflow
 
@@ -309,19 +325,31 @@ def mc_workflow_afni(reference_vol="mid",
                                   iterfield=['in_file'],
                                   name='calculate_FD_Jenkinson')
 
-    # compute mean FD
-    meanFD = pe.MapNode(interface=utils_math.Txt2meanTxt,
-                        iterfield=['in_file'],
-                        name='meanFD')
-    meanFD.inputs.axis = 0  # global mean
+        # compute mean and max FD
+        meanFD = pe.MapNode(interface=utils_math.Txt2meanTxt,
+                            iterfield=['in_file'],
+                            name='meanFD')
+        meanFD.inputs.axis = 0  # global mean
 
-    pop_FD = pe.Node(interface=utils_convert.List2TxtFileOpen,
-                     name='pop_FD')
+        maxFD = pe.MapNode(interface=utils_math.Txt2maxTxt,
+                           iterfield=['in_file'],
+                           name='maxFD')
+        maxFD.inputs.axis = 0  # global mean
+
+        pop_FD = pe.Node(interface=utils_convert.List2TxtFileOpen,
+                         name='pop_FD')
+        pop_FDmax = pe.Node(interface=utils_convert.List2TxtFileOpen,
+                            name='pop_FDmax')
 
     # save data out with Datasink
     ds_fd = pe.Node(interface=io.DataSink(), name='ds_pop_fd')
     ds_fd.inputs.regexp_substitutions = [("(\/)[^\/]*$", "FD.txt")]
     ds_fd.inputs.base_directory = SinkDir
+
+    # save data out with Datasink
+    ds_fd_max = pe.Node(interface=io.DataSink(), name='ds_pop_fd_max')
+    ds_fd_max.inputs.regexp_substitutions = [("(\/)[^\/]*$", "FD_max.txt")]
+    ds_fd_max.inputs.base_directory = SinkDir
 
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['func_out_file',
@@ -376,6 +404,10 @@ def mc_workflow_afni(reference_vol="mid",
     analysisflow.connect(calculate_FD, 'out_file', ds_text, 'mc_fd')
     analysisflow.connect(meanFD, 'mean_file', pop_FD, 'in_list')
     analysisflow.connect(pop_FD, 'txt_file', ds_fd, 'pop')
+
+    analysisflow.connect(calculate_FD, 'out_file', maxFD, 'in_file')
+    analysisflow.connect(maxFD, 'max_file', pop_FDmax, 'in_list')
+    analysisflow.connect(pop_FDmax, 'txt_file', ds_fd_max, 'pop')
 
     return analysisflow
 

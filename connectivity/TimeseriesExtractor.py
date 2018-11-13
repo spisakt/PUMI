@@ -67,7 +67,7 @@ def relabel_atlas(atlas_file, modules, labels):
     #return relabeled atlas labelmap file, reordered module names, reordered labels (region names), newlabels_file
 
 
-def myExtractor(labels, labelmap, func, mask, global_signal=True, pca=False, outfile="reg_timeseries.tsv"):
+def myExtractor(labels, labelmap, func, mask, global_signal=True, pca=False, outfile="reg_timeseries.tsv", outlabelmap="individual_gm_labelmap.nii.gz"):
 
     import nibabel as nib
     import pandas as pd
@@ -80,7 +80,7 @@ def myExtractor(labels, labelmap, func, mask, global_signal=True, pca=False, out
     labelmap_data[mask_data==0] = 0 # background
 
     outlab=nib.Nifti1Image(labelmap_data, nib.load(labelmap).affine)
-    nib.save(outlab, "test.nii.gz")
+    nib.save(outlab, outlabelmap)
 
     ret=[]
 
@@ -139,7 +139,7 @@ def myExtractor(labels, labelmap, func, mask, global_signal=True, pca=False, out
     ret.to_csv(outfile, sep="\t", index=False)
 
     import os
-    return os.path.join(os.getcwd(), outfile), labels
+    return os.path.join(os.getcwd(), outfile), labels, os.path.join(os.getcwd(), outlabelmap)
 
 
 def extract_timeseries(SinkTag="connectivity", wf_name="extract_timeseries", modularise=True):
