@@ -123,6 +123,52 @@ def compcor_workflow(SinkTag="func_preproc", wf_name="compcor"):
 
     return analysisflow
 
+def create_anat_noise_roi_workflow(SinkTag="func_preproc", wf_name="create_noise_roi"):
+    """
+    Creates an anatomical noise ROI for use with compcor
+
+    inputs are awaited from the (BBR-based) func2anat registration
+    and are already transformed to functional space
+
+    Tamas Spisak
+    2018
+
+
+    """
+    import os
+    import nipype
+    import nipype.pipeline as pe
+
+    # Basic interface class generates identity mappings
+    inputspec = pe.Node(utility.IdentityInterface(fields=['wm_mask',
+                                                          'ventricle_mask']),
+                        name='inputspec')
+
+    # Basic interface class generates identity mappings
+    outputspec = pe.Node(utility.IdentityInterface(fields=['noise_roi']),
+                        name='outputspec')
+
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
+    if not os.path.exists(SinkDir):
+        os.makedirs(SinkDir)
+    wf = nipype.Workflow(wf_name)
+
+    # erode WM mask in functional space
+    erode_mask = pe.MapNode(fsl.ErodeImage(),
+                            iterfield=['in_file'],
+                            name="erode_wm_mask")
+    wf.connect(inputspec, 'wm_mask', erode_mask, 'in_file')
+
+    # add ventricle and eroded WM masks
+    add_masks = pe.MapNode(fsl.ImageMaths(op_string=' -mul'), #multiply instead of add, which is better for masks
+                           iterfield=['in_file', 'in_file2'],
+                           name="addimgs")
+
+    wf.connect(inputspec, 'ventricle_mask', add_masks, 'in_file')
+    wf.connect(erode_mask, 'out_file', add_masks, 'in_file2')
+
+    return wf
+
 
 def scale_vol(in_file):
     import nibabel as nb
