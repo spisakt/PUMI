@@ -35,6 +35,7 @@ import nipype.interfaces.afni as afni
 import nipype.interfaces.utility as utility
 import PUMI.AnatProc as anatproc
 import PUMI.FuncProc as funcproc
+import PUMI.func_preproc.Compcor as cc
 # import the necessary workflows from the func_preproc folder
 import PUMI.anat_preproc.Func2Anat as bbr
 import PUMI.func_preproc.func2standard as transform
@@ -65,9 +66,9 @@ else:
     _MISTDIR_ = '/home/analyser/Documents/mistatlases/'
 
 ##############################
-globals._brainref="/data/standard/MNI152_T1_1mm_brain.nii.gz"
-globals._headref="/data/standard/MNI152_T1_1mm.nii.gz"
-globals._brainref_mask="/data/standard/MNI152_T1_1mm_brain_mask_dil.nii.gz"
+globals._brainref="/data/standard/MNI152_T1_2mm_brain.nii.gz"
+globals._headref="/data/standard/MNI152_T1_2mm.nii.gz"
+globals._brainref_mask="/data/standard/MNI152_T1_2mm_brain_mask_dil.nii.gz"
 ##############################
 _refvolplace_ = globals._RefVolPos_.first
 
@@ -120,23 +121,19 @@ mybbr = bbr.bbr_workflow()
 # Add arbitrary number of nii images wthin the same space. The default is to add csf and wm masks for anatcompcor calculation.
 #myadding=adding.addimgs_workflow(numimgs=2)
 
-# ToDo: put compcor-related mask handling into a nested pipeline
+# ToDo_ready: put compcor-related mask handling into a nested pipeline
 # TODO_ready: erode compcor noise mask!!!!
 # NOTE: more CSF voxels are retained for compcor when only WM signal is eroded and csf is added to it
-erode_mask = pe.MapNode(fsl.ErodeImage(),
-                        iterfield=['in_file'],
-                        name="erode_wm_mask")
 
-add_masks = pe.MapNode(fsl.ImageMaths(op_string=' -add'),
-                       iterfield=['in_file', 'in_file2'],
-                       name="addimgs")
+compcor_roi = cc.create_anat_noise_roi_workflow()
 
-def pickindex(vec, i):
-    return [x[i] for x in vec]
+#def pickindex(vec, i):
+#    return [x[i] for x in vec]
 
 #myfuncproc = funcproc.FuncProc_cpac(stdrefvol="mean")
 myfuncproc = funcproc.FuncProc_despike_afni()
 
+"""
 #ToDo: include scrubbing into FuncProc_despike_afni()???
 myscrub = scrub.datacens_workflow_threshold()
 
@@ -212,12 +209,12 @@ timeseries_qc = qc.regTimeseriesQC("regional_timeseries", tag="timeseries")
 measure = "tangent"
 mynetmat = nw.build_netmat(wf_name=measure.replace(" ", "_"))
 mynetmat.inputs.inputspec.measure = measure
+"""
 
 
-
-totalWorkflow = nipype.Workflow('preprocess_new1_last5')
+totalWorkflow = nipype.Workflow('comp')
 totalWorkflow.base_dir = '.'
-
+"""
 totalWorkflow.connect(extract_timesereies, 'out_file', mynetmat, 'inputspec.timeseries')
 totalWorkflow.connect(relabel_atls, 'reordered_modules', mynetmat, 'inputspec.modules')
 totalWorkflow.connect(resample_atlas_3mm, 'out_file', mynetmat, 'inputspec.atlas')
@@ -254,7 +251,7 @@ totalWorkflow.connect(extract_timesereies, 'out_file', timeseries_qc, 'inputspec
 totalWorkflow.connect(extract_timesereies, 'out_gm_label', ds_nii, 'gm_label_funcspace')
 
 totalWorkflow.connect(extract_timesereies_scrub, 'out_file', ds_txt, 'regional_timeseries_scrub')
-
+"""
 ##################
 
 # standardize what you need
@@ -304,19 +301,20 @@ totalWorkflow.connect([
      [('out_file','in_file2')]),
 
     (add_masks, myfuncproc,
-     [('out_file','inputspec.cc_noise_roi')]),
+     [('out_file','inputspec.cc_noise_roi')])
 
     # atlas2native
 
-    (mybbr, atlas2native, [('outputspec.example_func', 'inputspec.example_func'),
-                           ('outputspec.anat_to_func_linear_xfm', 'inputspec.inv_linear_reg_mtrx')]),
-    (myfuncproc, atlas2native,
-     [('outputspec.func_preprocessed', 'inputspec.func'),
-      ('outputspec.FD', 'inputspec.confounds')]),
-    (myanatproc, atlas2native,
-     [('outputspec.mni2anat_warpfield', 'inputspec.inv_nonlinear_reg_mtrx'),
-      # ('outputspec.std_template', 'inputspec.reference_brain'),
-      ('outputspec.brain', 'inputspec.anat')])
+    #(mybbr, atlas2native, [('outputspec.example_func', 'inputspec.example_func'),
+    #                       ('outputspec.anat_to_func_linear_xfm', 'inputspec.inv_linear_reg_mtrx')]),
+    #(myfuncproc, atlas2native,
+    # [('outputspec.func_preprocessed', 'inputspec.func'),
+    #  ('outputspec.FD', 'inputspec.confounds')]),
+    #(myanatproc, atlas2native,
+    # [('outputspec.mni2anat_warpfield', 'inputspec.inv_nonlinear_reg_mtrx'),
+    #  # ('outputspec.std_template', 'inputspec.reference_brain'),
+    #  ('outputspec.brain', 'inputspec.anat')])
+
 
     ])
 
@@ -329,4 +327,17 @@ totalWorkflow.connect([
 totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
 totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
 totalWorkflow.write_graph('graph.dot', graph2use='colored')
-totalWorkflow.run(plugin='Linear')
+
+#from nipype.utils.profiler import log_nodes_cb
+#import logging
+#callback_log_path = 'run_stats.log'
+#logger = logging.getLogger('callback')
+#logger.setLevel(logging.DEBUG)
+#handler = logging.FileHandler(callback_log_path)
+#logger.addHandler(handler)
+
+plugin_args = {'n_procs' : 8,
+               'memory_gb' : 13,
+#               'status_callback' : log_nodes_cb
+               }
+totalWorkflow.run(plugin='MultiProc', plugin_args=plugin_args)
