@@ -138,6 +138,9 @@ def create_anat_noise_roi_workflow(SinkTag="func_preproc", wf_name="create_noise
     import os
     import nipype
     import nipype.pipeline as pe
+    import nipype.interfaces.utility as utility
+    import nipype.interfaces.fsl as fsl
+    import PUMI.utils.globals as globals
 
     # Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=['wm_mask',
@@ -160,12 +163,14 @@ def create_anat_noise_roi_workflow(SinkTag="func_preproc", wf_name="create_noise
     wf.connect(inputspec, 'wm_mask', erode_mask, 'in_file')
 
     # add ventricle and eroded WM masks
-    add_masks = pe.MapNode(fsl.ImageMaths(op_string=' -mul'), #multiply instead of add, which is better for masks
+    add_masks = pe.MapNode(fsl.ImageMaths(op_string=' -add'),
                            iterfield=['in_file', 'in_file2'],
                            name="addimgs")
 
     wf.connect(inputspec, 'ventricle_mask', add_masks, 'in_file')
     wf.connect(erode_mask, 'out_file', add_masks, 'in_file2')
+
+    wf.connect(add_masks, 'out_file', outputspec, 'noise_roi')
 
     return wf
 
