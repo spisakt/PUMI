@@ -46,7 +46,7 @@ import PUMI.connectivity.TimeseriesExtractor as tsext
 import nipype.interfaces.nilearn as learn
 import PUMI.utils.QC as qc
 import PUMI.connectivity.NetworkBuilder as nw
-import PUMI.func_preproc.DataCensorer as scrub
+
 
 # parse command line arguments
 if (len(sys.argv) <= 2):

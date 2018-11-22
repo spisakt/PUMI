@@ -66,7 +66,7 @@ def datacens_workflow_percent(SinkTag="func_preproc", wf_name="data_censoring"):
     # Identitiy mapping for input variables
     inputspec = pe.Node(utility.IdentityInterface(fields=['func',
                                                           'FD',
-                                                          'threshold',]),
+                                                          'threshold']),
                         name='inputspec')
     inputspec.inputs.threshold = 5
 
@@ -128,7 +128,7 @@ def datacens_workflow_percent(SinkTag="func_preproc", wf_name="data_censoring"):
 
     return analysisflow
 
-def datacens_workflow_threshold(SinkTag="func_preproc", wf_name="data_censoring"):
+def datacens_workflow_threshold(SinkTag="func_preproc", wf_name="data_censoring", ex_before=1, ex_after=2):
 
     """
 
@@ -186,6 +186,7 @@ def datacens_workflow_threshold(SinkTag="func_preproc", wf_name="data_censoring"
     import nipype.pipeline as pe
     import nipype.interfaces.utility as utility
     import nipype.interfaces.io as io
+    import PUMI.utils.utils_convert as utils_convert
     import PUMI.utils.globals as globals
     import PUMI.utils.QC as qc
 
@@ -198,17 +199,33 @@ def datacens_workflow_threshold(SinkTag="func_preproc", wf_name="data_censoring"
                                                           'FD',
                                                           'threshold']),
                         name='inputspec')
-    inputspec.inputs.threshold = 0.2
+    inputspec.inputs.threshold = 0.2 #mm
 
     #TODO_ready check CPAC.generate_motion_statistics.generate_motion_statistics script. It may use the FD of Jenkinson to index volumes which violate the upper threhold limit, no matter what we set.
     # - we use the power method to calculate FD
-    # Determine the indices of the upper part (which is defined by the threshold, deafult 5%) of values based on their FD values
     above_thr = pe.MapNode(utility.Function(input_names=['in_file',
-                                                        'threshold'],
-                                           output_names=['frames_in_idx', 'frames_out_idx', 'percentFD', 'out_file', 'nvol'],
+                                                        'threshold',
+                                                         'frames_before',
+                                                         'frames_after'],
+                                           output_names=['frames_in_idx', 'frames_out_idx', 'percentFD', 'percent_scrubbed_file', 'fd_scrubbed_file', 'nvol'],
                                            function=above_threshold),
                                iterfield=['in_file'],
                              name='above_threshold')
+    above_thr.inputs.frames_before = ex_before
+    above_thr.inputs.frames_after = ex_after
+
+    # Save outputs which are important
+    ds_fd_scrub = pe.Node(interface=io.DataSink(),
+                         name='ds_fd_scrub')
+    ds_fd_scrub.inputs.base_directory = SinkDir
+    ds_fd_scrub.inputs.regexp_substitutions = [("(\/)[^\/]*$", "FD_scrubbed.csv")]
+    pop_perc_scrub = pe.Node(interface=utils_convert.List2TxtFileOpen,
+                     name='pop_perc_scrub')
+
+    # save data out with Datasink
+    ds_pop_perc_scrub = pe.Node(interface=io.DataSink(), name='ds_pop_perc_scrub')
+    ds_pop_perc_scrub.inputs.regexp_substitutions = [("(\/)[^\/]*$", "pop_percent_scrubbed.txt")]
+    ds_pop_perc_scrub.inputs.base_directory = SinkDir
 
     # Generate the weird input for the scrubbing procedure which is done in afni
     craft_scrub_input = pe.MapNode(utility.Function(input_names=['scrub_input', 'frames_in_1D_file'],
@@ -225,7 +242,7 @@ def datacens_workflow_threshold(SinkTag="func_preproc", wf_name="data_censoring"
 
     myqc = qc.timecourse2png("timeseries", tag="040_censored")
 
-    outputspec = pe.Node(utility.IdentityInterface(fields=['scrubbed_image', 'FD']),
+    outputspec = pe.Node(utility.IdentityInterface(fields=['scrubbed_image', 'FD_scrubbed']),
                          name='outputspec')
 
     # save data out with Datasink
@@ -243,15 +260,20 @@ def datacens_workflow_threshold(SinkTag="func_preproc", wf_name="data_censoring"
     analysisflow.connect(inputspec, 'threshold', above_thr, 'threshold')
     # Create the proper format for the scrubbing procedure
     analysisflow.connect(above_thr, 'frames_in_idx', craft_scrub_input, 'frames_in_1D_file')
-    analysisflow.connect(above_thr, 'out_file', ds, 'percentFD') # TODO save this in separet folder for QC
+    analysisflow.connect(above_thr, 'percent_scrubbed_file', ds, 'percentFD') # TODO save this in separate folder for QC
     analysisflow.connect(inputspec, 'func', craft_scrub_input, 'scrub_input')
     # Do the scubbing
     analysisflow.connect(craft_scrub_input, 'scrub_input_string', scrubbed_preprocessed, 'scrub_input')
     # Output
     analysisflow.connect(scrubbed_preprocessed, 'scrubbed_image', outputspec, 'scrubbed_image')
-    analysisflow.connect(inputspec, 'FD', outputspec, 'FD') #TODO: scrub FD file, as well
+    analysisflow.connect(above_thr, 'fd_scrubbed_file', outputspec, 'FD_scrubbed') #TODO_ready: scrub FD file, as well
+    analysisflow.connect(above_thr, 'fd_scrubbed_file', ds_fd_scrub, 'FD_scrubbed')
+
+    analysisflow.connect(above_thr, 'percent_scrubbed_file', pop_perc_scrub, 'in_list')
+    analysisflow.connect(pop_perc_scrub, 'txt_file', ds_pop_perc_scrub, 'pop')
+
     # Save a few files
-    #analysisflow.connect(scrubbed_preprocessed, 'scrubbed_image', ds, 'scrubbed_image')
+    analysisflow.connect(scrubbed_preprocessed, 'scrubbed_image', ds, 'scrubbed_image')
     #analysisflow.connect(above_thr, 'percentFD', ds, 'scrubbed_image.@numberofvols')
     analysisflow.connect(scrubbed_preprocessed, 'scrubbed_image', myqc, 'inputspec.func')
 
@@ -259,7 +281,7 @@ def datacens_workflow_threshold(SinkTag="func_preproc", wf_name="data_censoring"
     return analysisflow
 
 
-def despike_workflow(SinkTag="func_preproc", wf_name="data_censoring_despike"):
+def spikereg_workflow(SinkTag="func_preproc", wf_name="data_censoring_despike"):
 
     """
 
@@ -274,7 +296,7 @@ def despike_workflow(SinkTag="func_preproc", wf_name="data_censoring_despike"):
 
     Workflow outputs:
 
-        :return: despike_workflow - workflow
+        :return: spikereg_workflow - workflow
 
     Tamas Spisak
     tamas.spisak@uk-essen.de
@@ -360,7 +382,7 @@ def despike_workflow(SinkTag="func_preproc", wf_name="data_censoring_despike"):
 def above_threshold(in_file, threshold=0.2, frames_before=1, frames_after=2):
     import os
     import numpy as np
-    from numpy import loadtxt
+    from numpy import loadtxt, savetxt
     powersFD_data = loadtxt(in_file)
     powersFD_data[0] = 0  # TODO: whay do we need this
     frames_in_idx = np.argwhere(powersFD_data < threshold)[:, 0]
@@ -387,19 +409,23 @@ def above_threshold(in_file, threshold=0.2, frames_before=1, frames_after=2):
 
     frames_out_idx = indices_out
     frames_in_idx = np.setdiff1d(frames_in_idx, indices_out)
+
+    FD_scrubbed = powersFD_data[frames_in_idx]
+    fd_scrubbed_file = 'FD_scrubbed.csv'
+    savetxt(fd_scrubbed_file, FD_scrubbed, delimiter=",")
+
     frames_in_idx_str = ','.join(str(x) for x in frames_in_idx)
     frames_in_idx = frames_in_idx_str.split()
 
-    percentFD = 100 - (len(frames_out_idx) * 100 / (len(powersFD_data) + 1))
-
-    out_file = os.path.join(os.getcwd(), 'numberofcensoredvolumes.txt')
-    f = open(out_file, 'w')
-    f.write("%.3f," % (percentFD))
+    percentFD = (len(frames_out_idx) * 100 / (len(powersFD_data) + 1)) # % of frames censored
+    percent_scrubbed_file = os.path.join(os.getcwd(), 'percent_scrubbed.txt')
+    f = open(percent_scrubbed_file, 'w')
+    f.write("%.3f" % (percentFD))
     f.close()
 
     nvol = len(powersFD_data)
 
-    return frames_in_idx, frames_out_idx, percentFD, out_file, nvol
+    return frames_in_idx, frames_out_idx, percentFD, percent_scrubbed_file, fd_scrubbed_file, nvol
 
 
 

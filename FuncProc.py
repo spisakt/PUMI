@@ -10,9 +10,11 @@ import PUMI.func_preproc.NuissanceCorr as nuisscorr
 import PUMI.func_preproc.TemporalFiltering as tmpfilt
 import PUMI.func_preproc.DataCensorer as cens
 import PUMI.func_preproc.MedianAngleCorr as medangcor
+import PUMI.func_preproc.DataCensorer as scrub
 import nipype.interfaces.utility as utility
 import nipype.interfaces.afni as afni
 import PUMI.utils.globals as globals
+
 import os
 
 def FuncProc(stdrefvol="mid",SinkTag="func_preproc", wf_name="funcproc"):
@@ -186,7 +188,7 @@ def FuncProc_cpac(stdrefvol="mid",SinkTag="func_preproc", wf_name="funcproc"):
 
     return wf_mc
 
-def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc_dspk_afni", wf_name="func_preproc_dspk_afni"):
+def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc", wf_name="func_preproc_dspk_afni"):
     """
         Performs processing of functional (resting-state) images:
 
@@ -234,9 +236,13 @@ def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc_dspk_afni", wf_n
     #mymedangcor = medangcor.mac_workflow() #skip it this time
     mytmpfilt = tmpfilt.tmpfilt_workflow(highpass_Hz=0.008, lowpass_Hz=0.08) #will be done by the masker?
 
+    myscrub = scrub.datacens_workflow_threshold(ex_before=0, ex_after=0)
+    # "liberal scrubbing" since despiking was already performed
+
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=[
                                                            'func_preprocessed',
+                                                           'func_preprocessed_scrubbed'
                                                             # non-image data
                                                            'FD'
                                                            ]),
@@ -256,10 +262,13 @@ def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc_dspk_afni", wf_n
         (myconc,mynuisscor, [('outputspec.concat_file', 'inputspec.design_file')]),
         (mydespike, mynuisscor, [('out_file', 'inputspec.in_file')]),
         (mynuisscor,mytmpfilt,[('outputspec.out_file','inputspec.func')]),
+        (mytmpfilt, myscrub, [('outputspec.func_tmplfilt', 'inputspec.func')]),
+        (mymc, myscrub, [('outputspec.FD_file', 'inputspec.FD')]),
 
         (mytmpfilt,outputspec,[('outputspec.func_tmplfilt','func_preprocessed')]),
         # non-image data:
-        (mymc, outputspec, [('outputspec.FD_file', 'FD')])
+        (mymc, outputspec, [('outputspec.FD_file', 'FD')]),
+        (myscrub, outputspec, [('outputspec.scrubbed_image', 'func_preprocessed_scrubbed')]),
                    ])
 
     return wf_mc
