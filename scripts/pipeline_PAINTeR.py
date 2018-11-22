@@ -86,6 +86,9 @@ _ATLAS_MODULES = tsext.mist_modules(mist_directory=_MISTDIR_, resolution="122")
 _regtype_ = globals._RegType_.ANTS
 ##############################
 
+totalWorkflow = nipype.Workflow('comp')
+totalWorkflow.base_dir = '.'
+
 # create data grabber
 datagrab = pe.Node(io.DataGrabber(outfields=['func', 'struct']), name='data_grabber')
 
@@ -100,24 +103,38 @@ pop_id = pe.Node(interface=utils_convert.List2TxtFile,
                      name='pop_id')
 pop_id.inputs.rownum = 0
 pop_id.inputs.out_file = "subject_IDs.txt"
+totalWorkflow.connect(datagrab, 'func', pop_id, 'in_list')
+
 ds_id = pe.Node(interface=io.DataSink(), name='ds_pop_id')
 ds_id.inputs.regexp_substitutions = [("(\/)[^\/]*$", "IDs.txt")]
 ds_id.inputs.base_directory = globals._SinkDir_
+totalWorkflow.connect(pop_id, 'txt_file', ds_id, 'subjects')
 
 # build the actual pipeline
 reorient_struct = pe.MapNode(fsl.utils.Reorient2Std(),
                       iterfield=['in_file'],
                       name="reorient_struct")
+totalWorkflow.connect(datagrab, 'struct', reorient_struct, 'in_file')
+
 reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
                       iterfield=['in_file'],
                       name="reorient_func")
+totalWorkflow.connect(datagrab, 'func', reorient_func, 'in_file')
 
 myanatproc = anatproc.AnatProc(stdreg=_regtype_)
 myanatproc.inputs.inputspec.bet_fract_int_thr = 0.3  # feel free to adjust, a nice bet is important!
 myanatproc.inputs.inputspec.bet_vertical_gradient = -0.3 # feel free to adjust, a nice bet is important!
 # try scripts/opt_bet.py to optimise these parameters
+totalWorkflow.connect(reorient_struct, 'out_file', myanatproc, 'inputspec.anat')
 
 mybbr = bbr.bbr_workflow()
+totalWorkflow.connect(reorient_struct, 'out_file', mybbr, 'inputspec.skull')
+totalWorkflow.connect(reorient_func, 'out_file', mybbr, 'inputspec.func')
+totalWorkflow.connect(myanatproc, 'outputspec.probmap_wm', mybbr, 'inputspec.anat_wm_segmentation')
+totalWorkflow.connect(myanatproc, 'outputspec.probmap_csf', mybbr, 'inputspec.anat_csf_segmentation')
+totalWorkflow.connect(myanatproc, 'outputspec.probmap_gm', mybbr, 'inputspec.anat_gm_segmentation')
+totalWorkflow.connect(myanatproc, 'outputspec.probmap_ventricle', mybbr, 'inputspec.anat_ventricle_segmentation')
+
 # Add arbitrary number of nii images wthin the same space. The default is to add csf and wm masks for anatcompcor calculation.
 #myadding=adding.addimgs_workflow(numimgs=2)
 
@@ -126,12 +143,13 @@ mybbr = bbr.bbr_workflow()
 # NOTE: more CSF voxels are retained for compcor when only WM signal is eroded and csf is added to it
 
 compcor_roi = cc.create_anat_noise_roi_workflow()
+totalWorkflow.connect(mybbr, 'outputspec.wm_mask_in_funcspace', compcor_roi, 'inputspec.wm_mask')
+totalWorkflow.connect(mybbr, 'outputspec.ventricle_mask_in_funcspace', compcor_roi, 'inputspec.ventricle_mask')
 
-#def pickindex(vec, i):
-#    return [x[i] for x in vec]
-
-#myfuncproc = funcproc.FuncProc_cpac(stdrefvol="mean")
+# Preprocessing of functional data
 myfuncproc = funcproc.FuncProc_despike_afni()
+totalWorkflow.connect(reorient_func, 'out_file', myfuncproc, 'inputspec.func')
+totalWorkflow.connect(compcor_roi, 'outputspec.noise_roi', myfuncproc, 'inputspec.cc_noise_roi')
 
 """
 #ToDo: include scrubbing into FuncProc_despike_afni()???
@@ -211,9 +229,6 @@ mynetmat = nw.build_netmat(wf_name=measure.replace(" ", "_"))
 mynetmat.inputs.inputspec.measure = measure
 """
 
-
-totalWorkflow = nipype.Workflow('comp')
-totalWorkflow.base_dir = '.'
 """
 totalWorkflow.connect(extract_timesereies, 'out_file', mynetmat, 'inputspec.timeseries')
 totalWorkflow.connect(relabel_atls, 'reordered_modules', mynetmat, 'inputspec.modules')
@@ -263,61 +278,6 @@ totalWorkflow.connect(extract_timesereies_scrub, 'out_file', ds_txt, 'regional_t
 ###################
 
 
-
-# anatomical part and func2anat
-totalWorkflow.connect([
-    (datagrab, pop_id,
-     [('func', 'in_list')]),
-    (pop_id, ds_id,
-     [('txt_file', 'subjects')]),
-    (datagrab, reorient_struct,
-     [('struct', 'in_file')]),
-    (reorient_struct, myanatproc,
-     [('out_file', 'inputspec.anat')]),
-    (reorient_struct, mybbr,
-     [('out_file', 'inputspec.skull')]),
-    (datagrab, reorient_func,
-     [('func', 'in_file')]),
-    (reorient_func, mybbr,
-     [('out_file', 'inputspec.func')]),
-    (myanatproc, mybbr,
-      [('outputspec.probmap_wm', 'inputspec.anat_wm_segmentation'),
-       ('outputspec.probmap_csf', 'inputspec.anat_csf_segmentation'),
-       ('outputspec.probmap_gm', 'inputspec.anat_gm_segmentation'),
-       ('outputspec.probmap_ventricle', 'inputspec.anat_ventricle_segmentation')])
-
-    ])
-
-# functional part
-totalWorkflow.connect([
-    (reorient_func, myfuncproc,
-     [('out_file', 'inputspec.func')]),
-    (mybbr, erode_mask,
-     [('outputspec.wm_mask_in_funcspace','in_file')]),
-
-    (mybbr, add_masks,
-     [('outputspec.ventricle_mask_in_funcspace','in_file')]),
-    (erode_mask, add_masks,
-     [('out_file','in_file2')]),
-
-    (add_masks, myfuncproc,
-     [('out_file','inputspec.cc_noise_roi')])
-
-    # atlas2native
-
-    #(mybbr, atlas2native, [('outputspec.example_func', 'inputspec.example_func'),
-    #                       ('outputspec.anat_to_func_linear_xfm', 'inputspec.inv_linear_reg_mtrx')]),
-    #(myfuncproc, atlas2native,
-    # [('outputspec.func_preprocessed', 'inputspec.func'),
-    #  ('outputspec.FD', 'inputspec.confounds')]),
-    #(myanatproc, atlas2native,
-    # [('outputspec.mni2anat_warpfield', 'inputspec.inv_nonlinear_reg_mtrx'),
-    #  # ('outputspec.std_template', 'inputspec.reference_brain'),
-    #  ('outputspec.brain', 'inputspec.anat')])
-
-
-    ])
-
 # connect network analysis part
 #totalWorkflow.connect(atlas2native, 'outputspec.func_std', myextract, 'inputspec.std_func')
 #totalWorkflow.connect(myextract, 'outputspec.timeseries_file', mynetmat, 'inputspec.timeseries')
@@ -328,13 +288,13 @@ totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
 totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
 totalWorkflow.write_graph('graph.dot', graph2use='colored')
 
-#from nipype.utils.profiler import log_nodes_cb
-#import logging
-#callback_log_path = 'run_stats.log'
-#logger = logging.getLogger('callback')
-#logger.setLevel(logging.DEBUG)
-#handler = logging.FileHandler(callback_log_path)
-#logger.addHandler(handler)
+from nipype.utils.profiler import log_nodes_cb
+import logging
+callback_log_path = 'run_stats.log'
+logger = logging.getLogger('callback')
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(callback_log_path)
+logger.addHandler(handler)
 
 plugin_args = {'n_procs' : 8,
                'memory_gb' : 13,
