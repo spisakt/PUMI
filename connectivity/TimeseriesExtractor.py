@@ -67,7 +67,7 @@ def relabel_atlas(atlas_file, modules, labels):
     #return relabeled atlas labelmap file, reordered module names, reordered labels (region names), newlabels_file
 
 
-def myExtractor(labels, labelmap, func, mask, global_signal=True, pca=False, outfile="reg_timeseries.tsv", outlabelmap="individual_gm_labelmap.nii.gz"):
+def TsExtractor(labels, labelmap, func, mask, global_signal=True, pca=False, outfile="reg_timeseries.tsv", outlabelmap="individual_gm_labelmap.nii.gz"):
 
     import nibabel as nib
     import pandas as pd
@@ -235,6 +235,145 @@ def extract_timeseries(SinkTag="connectivity", wf_name="extract_timeseries", mod
 
 
     return analysisflow
+
+def PickAtlas(SinkTag="connectivity", wf_name="pick_atlas", reorder=True):
+    # reorder if modules is given (like for MIST atlases)
+    # if no module information available, pass a text file with a constant value x number of regions
+    import os
+    import nipype
+    import nipype.pipeline as pe
+    import nipype.interfaces.utility as utility
+    import nipype.interfaces.afni as afni
+    import PUMI.utils.globals as globals
+    import nipype.interfaces.io as io
+
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
+    if not os.path.exists(SinkDir):
+        os.makedirs(SinkDir)
+    wf = nipype.Workflow(wf_name)
+
+    inputspec = pe.Node(utility.IdentityInterface(fields=['labelmap', 'modules', 'labels']), name="inputspec")
+
+    # create atlas matching the stabndard space used
+    resample_atlas = pe.Node(interface=afni.Resample(outputtype='NIFTI_GZ',
+                                                     master=globals._FSLDIR_ + globals._brainref),
+                             name='resample_atlas')  # default interpolation is nearest neighbour
+
+    # Save outputs which are important
+    ds_newlabels = pe.Node(interface=io.DataSink(),
+                           name='ds_newlabels')
+    ds_newlabels.inputs.base_directory = globals._SinkDir_
+    ds_newlabels.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".tsv")]
+
+    # Basic interface class generates identity mappings
+    outputspec = pe.Node(utility.IdentityInterface(fields=['relabeled_atlas', 'reordered_labels', 'reordered_modules']),
+                         name='outputspec')
+
+    if reorder:
+        relabel_atls = pe.Node(interface=utility.Function(input_names=['atlas_file', 'modules', 'labels'],
+                                                          output_names=['relabelled_atlas_file', 'reordered_modules',
+                                                                        'reordered_labels', 'newlabels_file'],
+                                                          function=relabel_atlas),
+                               name='relabel_atlas')
+        wf.connect(inputspec, 'labelmap', relabel_atls, 'atlas_file')
+        wf.connect(inputspec, 'modules', relabel_atls, 'modules')
+        wf.connect(inputspec, 'labels', relabel_atls, 'labels')
+
+        wf.connect(relabel_atls, 'relabelled_atlas_file', resample_atlas, 'in_file')
+
+        wf.connect(relabel_atls, 'reordered_labels', ds_newlabels, 'reordered_labels')
+        #wf.connect(relabel_atls, 'reordered_modules', ds_newlabels, 'reordered_modules')
+
+        wf.connect(relabel_atls, 'reordered_labels', outputspec, 'reordered_labels')
+        wf.connect(relabel_atls, 'reordered_modules', outputspec, 'reordered_modules')
+
+    else:
+        wf.connect(inputspec, 'labelmap', resample_atlas, 'in_file')
+        wf.connect(inputspec, 'labels', ds_newlabels, 'atlas_labels')
+        # wf.connect(relabel_atls, 'reordered_modules', ds_newlabels, 'reordered_modules')
+        wf.connect(inputspec, 'labels', outputspec, 'reordered_labels')
+        wf.connect(inputspec, 'modules', outputspec, 'reordered_modules')
+
+    # Save outputs which are important
+    ds_nii = pe.Node(interface=io.DataSink(),
+                     name='ds_relabeled_atlas')
+    ds_nii.inputs.base_directory = globals._SinkDir_
+    ds_nii.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".nii.gz")]
+    wf.connect(resample_atlas, 'out_file', ds_nii, 'atlas')
+
+    wf.connect(resample_atlas, 'out_file', outputspec, 'relabeled_atlas')
+
+    return wf
+
+
+
+def extract_timeseries_nativespace(SinkTag="connectivity", wf_name="extract_timeseries_nativespace", global_signal=True):
+    # this workflow transforms atlas back to native space and uses TsExtractor
+
+    import os
+    import nipype
+    import nipype.pipeline as pe
+    import nipype.interfaces.utility as utility
+    import PUMI.func_preproc.func2standard as transform
+    import PUMI.utils.globals as globals
+    import PUMI.utils.QC as qc
+
+    SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
+    if not os.path.exists(SinkDir):
+        os.makedirs(SinkDir)
+    wf = nipype.Workflow(wf_name)
+
+    inputspec = pe.Node(utility.IdentityInterface(fields=['atlas',
+                                                          'labels',
+                                                          'modules',
+                                                          'anat', # only obligatory if stdreg==globals._RegType_.ANTS
+                                                          'inv_linear_reg_mtrx',
+                                                          'inv_nonlinear_reg_mtrx',
+                                                          'func',
+                                                          'gm_mask',
+                                                          'confounds',
+                                                          'confound_names']), name="inputspec")
+
+
+    # transform atlas back to native EPI spaces!
+    atlas2native = transform.atlas2func(stdreg=globals._regType_)
+    wf.connect(inputspec, 'atlas', atlas2native, 'inputspec.atlas')
+    wf.connect(inputspec, 'anat', atlas2native, 'inputspec.anat')
+    wf.connect(inputspec, 'inv_linear_reg_mtrx', atlas2native, 'inputspec.inv_linear_reg_mtrx')
+    wf.connect(inputspec, 'inv_nonlinear_reg_mtrx', atlas2native, 'inputspec.inv_nonlinear_reg_mtrx')
+    wf.connect(inputspec, 'func', atlas2native, 'inputspec.func')
+    wf.connect(inputspec, 'gm_mask', atlas2native, 'inputspec.example_func')
+    wf.connect(inputspec, 'confounds', atlas2native, 'inputspec.confounds')
+    wf.connect(inputspec, 'confound_names', atlas2native, 'inputspec.confound_names')
+
+    # extract timeseries
+    extract_timeseries = pe.MapNode(interface=utility.Function(input_names=['labels', 'labelmap',
+                                                                            'func', 'mask', 'global_signal'],
+                                                                output_names=['out_file', 'labels', 'out_gm_label'],
+                                                                function=TsExtractor),
+                                     iterfield=['labelmap', 'func', 'mask'],
+                                     name='extract_timeseries')
+    extract_timeseries.inputs.global_signal = global_signal
+    wf.connect(atlas2native, 'outputspec.atlas2func', extract_timeseries, 'labelmap')
+    wf.connect(inputspec, 'labels', extract_timeseries, 'labels')
+    wf.connect(inputspec, 'gm_mask', extract_timeseries, 'mask')
+    wf.connect(inputspec, 'func', extract_timeseries, 'func')
+
+    # QC
+    timeseries_qc = qc.regTimeseriesQC("regional_timeseries", tag=wf_name)
+    wf.connect(inputspec, 'modules', timeseries_qc, 'inputspec.modules')
+    wf.connect(inputspec, 'atlas', timeseries_qc, 'inputspec.atlas')
+    wf.connect(extract_timeseries, 'out_file', timeseries_qc, 'inputspec.timeseries')
+
+    # Basic interface class generates identity mappings
+    outputspec = pe.Node(utility.IdentityInterface(fields=['timeseries', 'out_gm_label']),
+                         name='outputspec')
+    wf.connect(extract_timeseries, 'out_file', outputspec, 'timeseries')
+    wf.connect(extract_timeseries, 'out_gm_label', outputspec, 'out_gm_label')
+
+    return wf
+
+
 
 
 
