@@ -8,6 +8,8 @@ class _RegType_:
     FSL = 1
     ANTS = 2
 
+_regType_ = _RegType_.ANTS
+
 #DEFAULTS:
 _fsl_bet_fract_int_thr_anat_ = 0.5
 _fsl_bet_fract_int_thr_func_ = 0.3
