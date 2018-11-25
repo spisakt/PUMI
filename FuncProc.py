@@ -11,8 +11,10 @@ import PUMI.func_preproc.TemporalFiltering as tmpfilt
 import PUMI.func_preproc.DataCensorer as cens
 import PUMI.func_preproc.MedianAngleCorr as medangcor
 import PUMI.func_preproc.DataCensorer as scrub
+import PUMI.utils.QC as qc
 import nipype.interfaces.utility as utility
 import nipype.interfaces.afni as afni
+import nipype.interfaces.fsl as fsl
 import PUMI.utils.globals as globals
 
 import os
@@ -188,7 +190,7 @@ def FuncProc_cpac(stdrefvol="mid",SinkTag="func_preproc", wf_name="funcproc"):
 
     return wf_mc
 
-def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc", wf_name="func_preproc_dspk_afni"):
+def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc", wf_name="func_preproc_dspk_afni", carpet_plot=""):
     """
         Performs processing of functional (resting-state) images:
 
@@ -216,28 +218,69 @@ def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc", wf_name="func_
     SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
+    wf_mc = nipype.Workflow(wf_name)
 
     # Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=['func', 'cc_noise_roi']),
                         name='inputspec')
 
+
     # build the actual pipeline
     #myonevol = onevol.onevol_workflow(SinkDir=SinkDir)
     mybet = bet.bet_workflow(SinkTag="func_preproc", fmri=True, wf_name="brain_extraction_func")
+
     mymc = mc.mc_workflow_fsl(reference_vol=stdrefvol)
+
+    if carpet_plot:
+        # create "atlas"
+        add_masks = pe.MapNode(fsl.ImageMaths(op_string=' -add'),
+                               iterfield=['in_file', 'in_file2'],
+                               name="addimgs")
+        wf_mc.connect(inputspec, 'cc_noise_roi', add_masks, 'in_file')
+        wf_mc.connect(mybet, 'outputspec.brain_mask', add_masks, 'in_file2')
+
+        fmri_qc_mc = qc.fMRI2QC(carpet_plot, tag="mc", indiv_atlas=True)
+        wf_mc.connect(add_masks, 'out_file', fmri_qc_mc, 'inputspec.atlas')
+        wf_mc.connect(mymc, 'outputspec.FD_file', fmri_qc_mc, 'inputspec.confounds')
+        wf_mc.connect(mymc, 'outputspec.func_out_file', fmri_qc_mc, 'inputspec.func')
 
     mydespike = pe.MapNode(afni.Despike(outputtype="NIFTI_GZ"),  # I do it after motion correction...
                            iterfield=['in_file'],
                            name="DeSpike")
 
+    if carpet_plot:
+        fmri_qc_mc_dspk = qc.fMRI2QC(carpet_plot, tag="mc_dspk", indiv_atlas=True)
+        wf_mc.connect(add_masks, 'out_file', fmri_qc_mc_dspk, 'inputspec.atlas')
+        wf_mc.connect(mymc, 'outputspec.FD_file', fmri_qc_mc_dspk, 'inputspec.confounds')
+        wf_mc.connect(mydespike, 'out_file', fmri_qc_mc_dspk, 'inputspec.func')
+
     mycmpcor = cmpcor.compcor_workflow() # to  WM+CSF signal
     myconc = conc.concat_workflow(numconcat=2)
     mynuisscor = nuisscorr.nuissremov_workflow() # regress out 5 compcor variables and the Friston24
+
+    if carpet_plot:
+        fmri_qc_mc_dspk_nuis = qc.fMRI2QC(carpet_plot, tag="mc_dspk_nuis", indiv_atlas=True)
+        wf_mc.connect(add_masks, 'out_file', fmri_qc_mc_dspk_nuis, 'inputspec.atlas')
+        wf_mc.connect(mymc, 'outputspec.FD_file', fmri_qc_mc_dspk_nuis, 'inputspec.confounds')
+        wf_mc.connect(mynuisscor, 'outputspec.out_file', fmri_qc_mc_dspk_nuis, 'inputspec.func')
+
     #mymedangcor = medangcor.mac_workflow() #skip it this time
     mytmpfilt = tmpfilt.tmpfilt_workflow(highpass_Hz=0.008, lowpass_Hz=0.08) #will be done by the masker?
 
+    if carpet_plot:
+        fmri_qc_mc_dspk_nuis_bpf = qc.fMRI2QC(carpet_plot, tag="mc_dspk_nuis_bpf", indiv_atlas=True)
+        wf_mc.connect(add_masks, 'out_file', fmri_qc_mc_dspk_nuis_bpf, 'inputspec.atlas')
+        wf_mc.connect(mymc, 'outputspec.FD_file', fmri_qc_mc_dspk_nuis_bpf, 'inputspec.confounds')
+        wf_mc.connect(mytmpfilt, 'outputspec.func_tmplfilt', fmri_qc_mc_dspk_nuis_bpf, 'inputspec.func')
+
     myscrub = scrub.datacens_workflow_threshold(ex_before=0, ex_after=0)
     # "liberal scrubbing" since despiking was already performed
+
+    if carpet_plot:
+        fmri_qc_mc_dspk_nuis_bpf_scrub = qc.fMRI2QC(carpet_plot, tag="mc_dspk_nuis_bpf_scrub", indiv_atlas=True)
+        wf_mc.connect(add_masks, 'out_file', fmri_qc_mc_dspk_nuis_bpf_scrub, 'inputspec.atlas')
+        wf_mc.connect(myscrub, 'outputspec.FD_scrubbed', fmri_qc_mc_dspk_nuis_bpf_scrub, 'inputspec.confounds')
+        wf_mc.connect(myscrub, 'outputspec.scrubbed_image', fmri_qc_mc_dspk_nuis_bpf_scrub, 'inputspec.func')
 
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=[
@@ -247,7 +290,6 @@ def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc", wf_name="func_
                                                            'FD'
                                                            ]),
                          name='outputspec')
-    wf_mc = nipype.Workflow(wf_name)
 
     wf_mc.connect([
         (inputspec, mybet,

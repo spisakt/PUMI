@@ -149,7 +149,7 @@ totalWorkflow.connect(mybbr, 'outputspec.wm_mask_in_funcspace', compcor_roi, 'in
 totalWorkflow.connect(mybbr, 'outputspec.ventricle_mask_in_funcspace', compcor_roi, 'inputspec.ventricle_mask')
 
 # Preprocessing of functional data
-myfuncproc = funcproc.FuncProc_despike_afni()
+myfuncproc = funcproc.FuncProc_despike_afni(carpet_plot="carpet_plots")
 totalWorkflow.connect(reorient_func, 'out_file', myfuncproc, 'inputspec.func')
 totalWorkflow.connect(compcor_roi, 'outputspec.noise_roi', myfuncproc, 'inputspec.cc_noise_roi')
 

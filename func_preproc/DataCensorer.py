@@ -411,7 +411,7 @@ def above_threshold(in_file, threshold=0.2, frames_before=1, frames_after=2):
     frames_in_idx = np.setdiff1d(frames_in_idx, indices_out)
 
     FD_scrubbed = powersFD_data[frames_in_idx]
-    fd_scrubbed_file = 'FD_scrubbed.csv'
+    fd_scrubbed_file = os.path.join(os.getcwd(), 'FD_scrubbed.csv')
     savetxt(fd_scrubbed_file, FD_scrubbed, delimiter=",")
 
     frames_in_idx_str = ','.join(str(x) for x in frames_in_idx)

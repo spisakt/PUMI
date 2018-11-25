@@ -139,7 +139,7 @@ def timecourse2png(qcname, tag="", type=TsPlotType.ALL, SinkDir=".", QCDIR="QC")
     return analysisflow
 
 
-def fMRI2QC(qcname, tag="", SinkDir=".", QCDIR="QC"):
+def fMRI2QC(qcname, tag="", SinkDir=".", QCDIR="QC", indiv_atlas=False):
     import os
     import nipype
     import nipype.pipeline as pe
@@ -159,11 +159,19 @@ def fMRI2QC(qcname, tag="", SinkDir=".", QCDIR="QC"):
     inputspec.inputs.atlas = globals._FSLDIR_ + '/data/atlases/HarvardOxford/HarvardOxford-cort-maxprob-thr25-3mm.nii.gz'
 
 
-    plotfmri = pe.MapNode(interface=Function(input_names=['func', 'atlaslabels', 'confounds', 'output_file'],
+    if indiv_atlas:
+        plotfmri = pe.MapNode(interface=Function(input_names=['func', 'atlaslabels', 'confounds', 'output_file'],
                                                   output_names=['plotfile'],
                                                   function=plot.plot_fmri_qc),
-                               iterfield=['func', 'confounds'],
+                               iterfield=['func', 'confounds', 'atlaslabels'],
                                name="qc_fmri")
+    else:
+        plotfmri = pe.MapNode(interface=Function(input_names=['func', 'atlaslabels', 'confounds', 'output_file'],
+                                             output_names=['plotfile'],
+                                             function=plot.plot_fmri_qc),
+                          iterfield=['func', 'confounds'],
+                          name="qc_fmri")
+
     plotfmri.inputs.output_file = "qc_fmri.png"
     # default atlas works only for standardized, 3mm-resoultion data
 
