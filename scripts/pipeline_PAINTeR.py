@@ -21,7 +21,9 @@
 
 # - computing the pain sensitivity score from the matrix is not included here and can be found in
 # https://github.com/spisakt/PAINTeR
-
+import warnings
+warnings.filterwarnings("ignore", message="numpy.dtype size changed")
+warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
 
 import sys
 # sys.path.append("/home/balint/Dokumentumok/phd/github/") #PUMI should be added to the path by install or by the developer
@@ -83,7 +85,7 @@ _ATLAS_MODULES = tsext.mist_modules(mist_directory=_MISTDIR_, resolution="122")
 ##############################
 ##############################
 #_regtype_ = globals._RegType_.FSL
-_regtype_ = globals._RegType_.ANTS
+globals._regType_ = globals._RegType_.ANTS
 ##############################
 
 totalWorkflow = nipype.Workflow('comp')
@@ -121,7 +123,7 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
                       name="reorient_func")
 totalWorkflow.connect(datagrab, 'func', reorient_func, 'in_file')
 
-myanatproc = anatproc.AnatProc(stdreg=_regtype_)
+myanatproc = anatproc.AnatProc(stdreg=globals._regType_)
 myanatproc.inputs.inputspec.bet_fract_int_thr = 0.3  # feel free to adjust, a nice bet is important!
 myanatproc.inputs.inputspec.bet_vertical_gradient = -0.3 # feel free to adjust, a nice bet is important!
 # try scripts/opt_bet.py to optimise these parameters
@@ -151,8 +153,58 @@ myfuncproc = funcproc.FuncProc_despike_afni()
 totalWorkflow.connect(reorient_func, 'out_file', myfuncproc, 'inputspec.func')
 totalWorkflow.connect(compcor_roi, 'outputspec.noise_roi', myfuncproc, 'inputspec.cc_noise_roi')
 
+# Pick atlas
+pickatlas = tsext.PickAtlas()
+pickatlas.inputs.inputspec.labelmap = _MISTDIR_ + "/Parcellations/MIST_122.nii.gz"
+pickatlas.inputs.inputspec.modules = _ATLAS_MODULES
+pickatlas.inputs.inputspec.labels = _ATLAS_LABELS
+
+# Extract timeseries
+extract_timeseries = tsext.extract_timeseries_nativespace()
+totalWorkflow.connect(pickatlas, 'outputspec.relabeled_atlas', extract_timeseries, 'inputspec.atlas')
+totalWorkflow.connect(pickatlas, 'outputspec.reordered_labels', extract_timeseries, 'inputspec.labels')
+totalWorkflow.connect(pickatlas, 'outputspec.reordered_modules', extract_timeseries, 'inputspec.modules')
+totalWorkflow.connect(myanatproc, 'outputspec.brain', extract_timeseries, 'inputspec.anat')
+totalWorkflow.connect(mybbr, 'outputspec.anat_to_func_linear_xfm', extract_timeseries, 'inputspec.inv_linear_reg_mtrx')
+totalWorkflow.connect(myanatproc, 'outputspec.mni2anat_warpfield', extract_timeseries, 'inputspec.inv_nonlinear_reg_mtrx')
+totalWorkflow.connect(mybbr, 'outputspec.gm_mask_in_funcspace', extract_timeseries, 'inputspec.gm_mask')
+totalWorkflow.connect(myfuncproc, 'outputspec.func_preprocessed', extract_timeseries, 'inputspec.func')
+totalWorkflow.connect(myfuncproc, 'outputspec.FD', extract_timeseries, 'inputspec.confounds')
+
+
+# compute connectivity
+measure = "partial correlation"
+mynetmat = nw.build_netmat(wf_name=measure.replace(" ", "_"))
+mynetmat.inputs.inputspec.measure = measure
+
+totalWorkflow.connect(extract_timeseries, 'outputspec.timeseries', mynetmat, 'inputspec.timeseries')
+totalWorkflow.connect(pickatlas, 'outputspec.reordered_modules', mynetmat, 'inputspec.modules')
+totalWorkflow.connect(pickatlas, 'outputspec.relabeled_atlas', mynetmat, 'inputspec.atlas')
+
+# Extract timeseries
+extract_timeseries_scrubbed = tsext.extract_timeseries_nativespace(SinkTag="connectivity_scrubbed", wf_name="extract_timeseries_nativespace_scribbed")
+totalWorkflow.connect(pickatlas, 'outputspec.relabeled_atlas', extract_timeseries_scrubbed, 'inputspec.atlas')
+totalWorkflow.connect(pickatlas, 'outputspec.reordered_labels', extract_timeseries_scrubbed, 'inputspec.labels')
+totalWorkflow.connect(pickatlas, 'outputspec.reordered_modules', extract_timeseries_scrubbed, 'inputspec.modules')
+totalWorkflow.connect(myanatproc, 'outputspec.brain', extract_timeseries_scrubbed, 'inputspec.anat')
+totalWorkflow.connect(mybbr, 'outputspec.anat_to_func_linear_xfm', extract_timeseries_scrubbed, 'inputspec.inv_linear_reg_mtrx')
+totalWorkflow.connect(myanatproc, 'outputspec.mni2anat_warpfield', extract_timeseries_scrubbed, 'inputspec.inv_nonlinear_reg_mtrx')
+totalWorkflow.connect(mybbr, 'outputspec.gm_mask_in_funcspace', extract_timeseries_scrubbed, 'inputspec.gm_mask')
+totalWorkflow.connect(myfuncproc, 'outputspec.func_preprocessed_scrubbed', extract_timeseries_scrubbed, 'inputspec.func')
+totalWorkflow.connect(myfuncproc, 'outputspec.FD', extract_timeseries_scrubbed, 'inputspec.confounds')
+
+
+# compute connectivity
+measure = "partial correlation"
+mynetmat_scrubbed = nw.build_netmat(SinkTag="connectivity_scrubbed", wf_name=measure.replace(" ", "_") + "_scrubbed")
+mynetmat_scrubbed.inputs.inputspec.measure = measure
+
+totalWorkflow.connect(extract_timeseries_scrubbed, 'outputspec.timeseries', mynetmat_scrubbed, 'inputspec.timeseries')
+totalWorkflow.connect(pickatlas, 'outputspec.reordered_modules', mynetmat_scrubbed, 'inputspec.modules')
+totalWorkflow.connect(pickatlas, 'outputspec.relabeled_atlas', mynetmat_scrubbed, 'inputspec.atlas')
+
 """
-#ToDo: include scrubbing into FuncProc_despike_afni()???
+#ToDo_ready: include scrubbing into FuncProc_despike_afni()???
 myscrub = scrub.datacens_workflow_threshold()
 
 #Todo: PickAtlas Node with reorder=True (with modulers given)
@@ -201,13 +253,13 @@ atlas2native = transform.atlas2func(stdreg=_regtype_)
 
 extract_timesereies = pe.MapNode(interface=utility.Function(input_names=['labels', 'labelmap', 'func', 'mask'],
                                                             output_names=['out_file', 'labels', 'out_gm_label'],
-                                                            function=tsext.myExtractor),
+                                                            function=tsext.TsExtractor),
                                  iterfield=['labelmap', 'func', 'mask'],
                                  name='extract_timeseries')
 
 extract_timesereies_scrub = pe.MapNode(interface=utility.Function(input_names=['labels', 'labelmap', 'func', 'mask'],
                                                             output_names=['out_file', 'labels', 'out_gm_label'],
-                                                            function=tsext.myExtractor),
+                                                            function=tsext.TsExtractor),
                                  iterfield=['labelmap', 'func', 'mask'],
                                  name='extract_timeseries_scrub')
 
