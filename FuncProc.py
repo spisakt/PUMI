@@ -242,7 +242,7 @@ def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc", wf_name="func_
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=[
                                                            'func_preprocessed',
-                                                           'func_preprocessed_scrubbed'
+                                                           'func_preprocessed_scrubbed',
                                                             # non-image data
                                                            'FD'
                                                            ]),
