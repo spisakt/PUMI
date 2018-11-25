@@ -222,7 +222,6 @@ def atlas2func(stdreg, carpet_plot="", wf_name='mni2func', SinkTag="func_preproc
                                                         'inv_nonlinear_reg_mtrx',
                                                         'func',
                                                         'example_func',
-                                                        'atlas',
                                                         'confounds',
                                                         'confound_names']),
                                                 name='inputspec')
