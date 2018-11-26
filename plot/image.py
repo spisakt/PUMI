@@ -9,7 +9,7 @@ def plot_fmri_qc(func, atlaslabels, confounds, output_file=None):
     import os
 
     def plot_carpet(img, atlaslabels, detrend=True, nskip=0, size=(950, 800),
-                    subplot=None, title=None, output_file=None, legend=False,
+                    subplot=None, title=None, output_file=None, legend=True,
                     lut=None):
         """
         Adapted from: https://github.com/poldracklab/niworkflows
@@ -185,7 +185,7 @@ def plot_fmri_qc(func, atlaslabels, confounds, output_file=None):
             coords = np.linspace(int(0.10 * nslices), int(0.95 * nslices), 5).astype(np.uint8)
             for i, c in enumerate(coords.tolist()):
                 ax2 = plt.subplot(gslegend[i])
-                plot_img(segnii, bg_img=epinii, axes=ax2, display_mode='z',
+                plot_img(segnii, axes=ax2, display_mode='z',
                          annotate=False, cut_coords=[c], threshold=0.1, cmap=mycolors,
                          interpolation='nearest')
 

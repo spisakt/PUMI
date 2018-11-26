@@ -68,9 +68,9 @@ else:
     _MISTDIR_ = '/home/analyser/Documents/mistatlases/'
 
 ##############################
-globals._brainref="/data/standard/MNI152_T1_2mm_brain.nii.gz"
-globals._headref="/data/standard/MNI152_T1_2mm.nii.gz"
-globals._brainref_mask="/data/standard/MNI152_T1_2mm_brain_mask_dil.nii.gz"
+globals._brainref="/data/standard/MNI152_T1_1mm_brain.nii.gz"
+globals._headref="/data/standard/MNI152_T1_1mm.nii.gz"
+globals._brainref_mask="/data/standard/MNI152_T1_1mm_brain_mask_dil.nii.gz"
 ##############################
 _refvolplace_ = globals._RefVolPos_.first
 
@@ -340,6 +340,8 @@ totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
 totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
 totalWorkflow.write_graph('graph.dot', graph2use='colored')
 
+from nipype import config
+config.enable_resource_monitor()
 from nipype.utils.profiler import log_nodes_cb
 import logging
 callback_log_path = 'run_stats.log'
@@ -350,6 +352,6 @@ logger.addHandler(handler)
 
 plugin_args = {'n_procs' : 8,
                'memory_gb' : 13,
-#               'status_callback' : log_nodes_cb
+#              'status_callback' : log_nodes_cb
                }
 totalWorkflow.run(plugin='MultiProc', plugin_args=plugin_args)
