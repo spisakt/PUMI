@@ -340,18 +340,18 @@ totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
 totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
 totalWorkflow.write_graph('graph.dot', graph2use='colored')
 
-from nipype import config
-config.enable_resource_monitor()
+#from nipype import config
+#config.enable_resource_monitor()
 from nipype.utils.profiler import log_nodes_cb
-import logging
-callback_log_path = 'run_stats.log'
-logger = logging.getLogger('callback')
-logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(callback_log_path)
-logger.addHandler(handler)
+#import logging
+#callback_log_path = 'run_stats.log'
+#logger = logging.getLogger('callback')
+#logger.setLevel(logging.DEBUG)
+#handler = logging.FileHandler(callback_log_path)
+#logger.addHandler(handler)
 
-plugin_args = {'n_procs' : 8,
-               'memory_gb' : 13,
+#plugin_args = {'n_procs' : 8,
+#               'memory_gb' : 13,
 #              'status_callback' : log_nodes_cb
-               }
-totalWorkflow.run(plugin='MultiProc', plugin_args=plugin_args)
+#               }
+totalWorkflow.run(plugin='MultiProc') #, plugin_args=plugin_args)
