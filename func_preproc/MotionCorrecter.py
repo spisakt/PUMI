@@ -44,6 +44,7 @@ def mc_workflow_fsl(reference_vol="mid",
     import nipype.pipeline as pe
     import nipype.interfaces.utility as utility
     import nipype.interfaces.fsl as fsl
+    import nipype.algorithms.confounds as conf
     import PUMI.func_preproc.info.info_get as info_get
     import nipype.interfaces.io as io
     import PUMI.utils.utils_math as utils_math
@@ -114,11 +115,10 @@ def mc_workflow_fsl(reference_vol="mid",
 
     # Calculate FD based on Power's method
     if FD_mode == "Power":
-        calculate_FD = pe.MapNode(utility.Function(input_names=['in_file'],
-                                               output_names=['out_file'],
-                                               function=calculate_FD_P),
-                              iterfield=['in_file'],
-                              name='calculate_FD_Power')
+        calculate_FD = pe.MapNode(conf.FramewiseDisplacement(parameter_source='FSL', save_plot=True),
+                                         iterfield=['in_file'],
+                                         name='calculate_FD_Power'
+                                         )
     elif FD_mode == "Jenkinson":
         calculate_FD = pe.MapNode(utility.Function(input_names=['in_file'],
                                                    output_names=['out_file'],
@@ -131,11 +131,13 @@ def mc_workflow_fsl(reference_vol="mid",
                         iterfield=['in_file'],
                         name='meanFD')
     meanFD.inputs.axis = 0  # global mean
+    meanFD.inputs.header = True  # global mean
 
     maxFD = pe.MapNode(interface=utils_math.Txt2maxTxt,
                         iterfield=['in_file'],
                         name='maxFD')
     maxFD.inputs.axis = 0  # global mean
+    maxFD.inputs.header = True
 
     pop_FD = pe.Node(interface=utils_convert.List2TxtFileOpen,
                      name='pop_FD')
@@ -184,6 +186,12 @@ def mc_workflow_fsl(reference_vol="mid",
     ds_text.inputs.base_directory = SinkDir
 
     # Save outputs which are important
+    ds_qc_fd = pe.Node(interface=io.DataSink(),
+                        name='ds_qc_fd')
+    ds_qc_fd.inputs.base_directory = QCDir
+    ds_qc_fd.inputs.regexp_substitutions = [("(\/)[^\/]*$", "_FD.pdf")]
+
+    # Save outputs which are important
     ds_qc_rot = pe.Node(interface=io.DataSink(),
                   name='ds_qc_rot')
     ds_qc_rot.inputs.base_directory = QCDir
@@ -226,6 +234,7 @@ def mc_workflow_fsl(reference_vol="mid",
     # pop-level mean FD
     analysisflow.connect(calculate_FD, 'out_file', meanFD, 'in_file')
     analysisflow.connect(calculate_FD, 'out_file', ds_text, 'mc_fd')
+    analysisflow.connect(calculate_FD, 'out_figure', ds_qc_fd, 'FD')
     analysisflow.connect(meanFD, 'mean_file', pop_FD, 'in_list')
     analysisflow.connect(pop_FD, 'txt_file', ds_fd, 'pop')
 
@@ -249,6 +258,7 @@ def mc_workflow_afni(reference_vol="mid",
     import nipype.interfaces.utility as utility
     import PUMI.func_preproc.info.info_get as info_get
     import nipype.interfaces.io as io
+    import nipype.algorithms.confounds as conf
     import PUMI.utils.utils_math as utils_math
     import PUMI.utils.utils_convert as utils_convert
     import PUMI.utils.globals as globals
@@ -311,13 +321,11 @@ def mc_workflow_afni(reference_vol="mid",
                               iterfield=['in_file'],
                               name='calc_friston')
 
-    # Calculate FD based on Power's method
     if FD_mode == "Power":
-        calculate_FD = pe.MapNode(utility.Function(input_names=['in_file'],
-                                                   output_names=['out_file'],
-                                                   function=calculate_FD_P),
+        calculate_FD = pe.MapNode(conf.FramewiseDisplacement(parameter_source='AFNI', save_plot=True),
                                   iterfield=['in_file'],
-                                  name='calculate_FD_Power')
+                                  name='calculate_FD_Power'
+                                  )
     elif FD_mode == "Jenkinson":
         calculate_FD = pe.MapNode(utility.Function(input_names=['in_file'],
                                                    output_names=['out_file'],
@@ -330,11 +338,13 @@ def mc_workflow_afni(reference_vol="mid",
                             iterfield=['in_file'],
                             name='meanFD')
         meanFD.inputs.axis = 0  # global mean
+        meanFD.inputs.header = True  # global mean
 
         maxFD = pe.MapNode(interface=utils_math.Txt2maxTxt,
                            iterfield=['in_file'],
                            name='maxFD')
         maxFD.inputs.axis = 0  # global mean
+        maxFD.inputs.header = True  # global mean
 
         pop_FD = pe.Node(interface=utils_convert.List2TxtFileOpen,
                          name='pop_FD')
@@ -350,6 +360,12 @@ def mc_workflow_afni(reference_vol="mid",
     ds_fd_max = pe.Node(interface=io.DataSink(), name='ds_pop_fd_max')
     ds_fd_max.inputs.regexp_substitutions = [("(\/)[^\/]*$", "FD_max.txt")]
     ds_fd_max.inputs.base_directory = SinkDir
+
+    # Save outputs which are important
+    ds_qc_fd = pe.Node(interface=io.DataSink(),
+                       name='ds_qc_fd')
+    ds_qc_fd.inputs.base_directory = QCDir
+    ds_qc_fd.inputs.regexp_substitutions = [("(\/)[^\/]*$", "_FD.pdf")]
 
     # Basic interface class generates identity mappings
     outputspec = pe.Node(utility.IdentityInterface(fields=['func_out_file',
@@ -404,6 +420,7 @@ def mc_workflow_afni(reference_vol="mid",
     analysisflow.connect(calculate_FD, 'out_file', ds_text, 'mc_fd')
     analysisflow.connect(meanFD, 'mean_file', pop_FD, 'in_list')
     analysisflow.connect(pop_FD, 'txt_file', ds_fd, 'pop')
+    analysisflow.connect(calculate_FD, 'out_figure', ds_qc_fd, 'FD')
 
     analysisflow.connect(calculate_FD, 'out_file', maxFD, 'in_file')
     analysisflow.connect(maxFD, 'max_file', pop_FDmax, 'in_list')

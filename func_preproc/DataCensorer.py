@@ -383,8 +383,8 @@ def above_threshold(in_file, threshold=0.2, frames_before=1, frames_after=2):
     import os
     import numpy as np
     from numpy import loadtxt, savetxt
-    powersFD_data = loadtxt(in_file)
-    powersFD_data[0] = 0  # TODO: whay do we need this
+    powersFD_data = loadtxt(in_file, skiprows=1)
+    np.insert(powersFD_data, 0, 0)  # TODO_ready: why do we need this: see output of nipype.algorithms.confounds.FramewiseDisplacement
     frames_in_idx = np.argwhere(powersFD_data < threshold)[:, 0]
     frames_out = np.argwhere(powersFD_data >= threshold)[:, 0]
 
@@ -434,8 +434,8 @@ def calculate_upperpercent(in_file,threshold, frames_before=1, frames_after=2):
     import numpy as np
     from numpy import loadtxt
     # Receives the FD file to calculate the upper percent of violating volumes
-    powersFD_data = loadtxt(in_file)
-    powersFD_data[0] = 0    # TODO: whay do we need this
+    powersFD_data = loadtxt(in_file, skiprows=1)
+    np.insert(powersFD_data, 0, 0)  # TODO_ready: why do we need this: see output of nipype.algorithms.confounds.FramewiseDisplacement
     sortedpwrsFDdata = sorted(powersFD_data)
     limitvalueindex = int(len(sortedpwrsFDdata) * threshold / 100)
     limitvalue = sortedpwrsFDdata[len(sortedpwrsFDdata) - limitvalueindex]

@@ -9,7 +9,7 @@ def plot_fmri_qc(func, atlaslabels, confounds, output_file=None):
     import os
 
     def plot_carpet(img, atlaslabels, detrend=True, nskip=0, size=(950, 800),
-                    subplot=None, title=None, output_file=None, legend=True,
+                    subplot=None, title=None, output_file=None, legend=False,
                     lut=None):
         """
         Adapted from: https://github.com/poldracklab/niworkflows

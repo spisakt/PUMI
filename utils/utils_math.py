@@ -22,23 +22,29 @@ def sec2sigmaV(TR, sec):
 
 # calculates colmeans, rowmenas or global mean, depenxding on the 'axis' parameter
 # and saves it to another txt
-def txt2MeanTxt(in_file, axis=None):
+def txt2MeanTxt(in_file, axis=None, header=False):
     import numpy as np
     import os
-    data = np.loadtxt(in_file, ) #header -> dropline
+    if header:
+        print "drop first line"
+        data = np.loadtxt(in_file, skiprows=1) #header -> dropline
+    else:
+        print "don't drop first line"
+        data = np.loadtxt(in_file)
     mean = data.mean(axis=axis)
-    print '******************'
-    print mean
     np.savetxt('mean.txt', [mean])
     return os.getcwd() + '/mean.txt'
 
-def txt2MaxTxt(in_file, axis=None):
+def txt2MaxTxt(in_file, axis=None, header=False):
     import numpy as np
     import os
-    data = np.loadtxt(in_file, ) #header -> dropline
+    if header:
+        print "drop first line"
+        data = np.loadtxt(in_file, skiprows=1) #header -> dropline
+    else:
+        print "don't drop first line"
+        data = np.loadtxt(in_file)
     mean = data.max(axis=axis)
-    print '******************'
-    print mean
     np.savetxt('max.txt', [mean])
     return os.getcwd() + '/max.txt'
 
@@ -65,10 +71,10 @@ Sec2sigmaV = Function(input_names=['TR', 'sec'],
                        output_names=['sigmaV'],
                        function=sec2sigmaV)
 
-Txt2meanTxt = Function(input_names=['in_file', 'axis'],
+Txt2meanTxt = Function(input_names=['in_file', 'axis', 'header'],
                        output_names=['mean_file'],
                        function=txt2MeanTxt)
 
-Txt2maxTxt = Function(input_names=['in_file', 'axis'],
+Txt2maxTxt = Function(input_names=['in_file', 'axis', 'header'],
                        output_names=['max_file'],
                        function=txt2MaxTxt)
