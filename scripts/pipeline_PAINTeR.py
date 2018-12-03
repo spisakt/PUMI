@@ -21,6 +21,11 @@
 
 # - computing the pain sensitivity score from the matrix is not included here and can be found in
 # https://github.com/spisakt/PAINTeR
+
+# start it like:
+# /Users/tspisak/src/PUMI/scripts/pipeline_PAINTeR.py "/Users/tspisak/projects/PAINTeR/data/nii-szeged/data/PA*/highres.nii" "/Users/tspisak/projects/PAINTeR/data/nii-szeged/data/PA*/rest.nii" /Users/tspisak/projects/PAINTeR/res/szeged /Users/tspisak/data/atlases/MIST/
+
+
 import warnings
 warnings.filterwarnings("ignore", message="numpy.dtype size changed")
 warnings.filterwarnings("ignore", message="numpy.ufunc size changed")
@@ -88,7 +93,7 @@ _ATLAS_MODULES = tsext.mist_modules(mist_directory=_MISTDIR_, resolution="122")
 globals._regType_ = globals._RegType_.ANTS
 ##############################
 
-totalWorkflow = nipype.Workflow('comp')
+totalWorkflow = nipype.Workflow('pumi')
 totalWorkflow.base_dir = '.'
 
 # create data grabber
@@ -113,12 +118,12 @@ ds_id.inputs.base_directory = globals._SinkDir_
 totalWorkflow.connect(pop_id, 'txt_file', ds_id, 'subjects')
 
 # build the actual pipeline
-reorient_struct = pe.MapNode(fsl.utils.Reorient2Std(),
+reorient_struct = pe.MapNode(fsl.utils.Reorient2Std(output_type='NIFTI'),
                       iterfield=['in_file'],
                       name="reorient_struct")
 totalWorkflow.connect(datagrab, 'struct', reorient_struct, 'in_file')
 
-reorient_func = pe.MapNode(fsl.utils.Reorient2Std(),
+reorient_func = pe.MapNode(fsl.utils.Reorient2Std(output_type='NIFTI'),
                       iterfield=['in_file'],
                       name="reorient_func")
 totalWorkflow.connect(datagrab, 'func', reorient_func, 'in_file')
@@ -340,18 +345,21 @@ totalWorkflow.write_graph('graph-orig.dot', graph2use='orig', simple_form=True)
 totalWorkflow.write_graph('graph-exec-detailed.dot', graph2use='exec', simple_form=False)
 totalWorkflow.write_graph('graph.dot', graph2use='colored')
 
-#from nipype import config
-#config.enable_resource_monitor()
+from nipype import config
+config.enable_resource_monitor()
 from nipype.utils.profiler import log_nodes_cb
-#import logging
-#callback_log_path = 'run_stats.log'
-#logger = logging.getLogger('callback')
-#logger.setLevel(logging.DEBUG)
-#handler = logging.FileHandler(callback_log_path)
-#logger.addHandler(handler)
+import logging
+callback_log_path = 'run_stats.log'
+logger = logging.getLogger('callback')
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(callback_log_path)
+logger.addHandler(handler)
 
-#plugin_args = {'n_procs' : 8,
-#               'memory_gb' : 13,
-#              'status_callback' : log_nodes_cb
-#               }
-totalWorkflow.run(plugin='MultiProc') #, plugin_args=plugin_args)
+plugin_args = {'n_procs' : 8,
+               'memory_gb' : 8,
+              'status_callback' : log_nodes_cb
+               }
+totalWorkflow.run(plugin='MultiProc', plugin_args=plugin_args)
+
+import PUMI.utils.resource_profiler as rp
+rp.generate_gantt_chart('run_stats.log', cores=8)
