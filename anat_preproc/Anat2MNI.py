@@ -350,7 +350,7 @@ def anat2mni_ants_workflow_harcoded(SinkTag="anat_preproc", wf_name="anat2mni_an
                                         function=hardcoded_reg_fast),
                      iterfield=['anatomical_brain', 'anatomical_skull'],
                      name="ANTS_hardcoded",
-                     mem_gb=8)
+                     mem_gb=4.1)
 
     # Calculate linear transformation with FSL. This matrix has to be used in segmentation with fast if priors are set. (the default).
     # Linear registration node
