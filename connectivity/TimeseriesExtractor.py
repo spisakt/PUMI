@@ -156,6 +156,7 @@ def extract_timeseries(SinkTag="connectivity", wf_name="extract_timeseries", mod
     import PUMI.utils.QC as qc
     import os
 
+
     SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
         os.makedirs(SinkDir)
@@ -313,6 +314,7 @@ def extract_timeseries_nativespace(SinkTag="connectivity", wf_name="extract_time
     import os
     import nipype
     import nipype.pipeline as pe
+    import nipype.interfaces.io as io
     import nipype.interfaces.utility as utility
     import PUMI.func_preproc.func2standard as transform
     import PUMI.utils.globals as globals
