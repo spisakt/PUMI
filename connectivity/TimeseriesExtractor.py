@@ -359,6 +359,13 @@ def extract_timeseries_nativespace(SinkTag="connectivity", wf_name="extract_time
     wf.connect(inputspec, 'gm_mask', extract_timeseries, 'mask')
     wf.connect(inputspec, 'func', extract_timeseries, 'func')
 
+    # Save outputs which are important
+    ds_regts = pe.Node(interface=io.DataSink(),
+                           name='ds_regts')
+    ds_regts.inputs.base_directory = globals._SinkDir_
+    ds_regts.inputs.regexp_substitutions = [("(\/)[^\/]*$", ".tsv")]
+    wf.connect(extract_timeseries, 'out_file', ds_regts, 'regional_timeseries')
+
     # QC
     timeseries_qc = qc.regTimeseriesQC("regional_timeseries", tag=wf_name)
     wf.connect(inputspec, 'modules', timeseries_qc, 'inputspec.modules')
