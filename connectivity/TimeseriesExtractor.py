@@ -91,7 +91,9 @@ def TsExtractor(labels, labelmap, func, mask, global_signal=True, pca=False, out
             x = func_data[i[0], i[1], i[2], :]
             if np.std(x) > 0.000001:
                 X.append(x.tolist())
-        if pca:
+        if len(X)==0:
+            x=np.repeat(0,func_data.shape[3])
+        elif pca:
             import sklearn.decomposition as decomp
             from sklearn.preprocessing import StandardScaler
             X = StandardScaler().fit_transform(np.transpose(X))

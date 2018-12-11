@@ -129,13 +129,13 @@ reorient_func = pe.MapNode(fsl.utils.Reorient2Std(output_type='NIFTI'),
 totalWorkflow.connect(datagrab, 'func', reorient_func, 'in_file')
 
 myanatproc = anatproc.AnatProc(stdreg=globals._regType_)
-myanatproc.inputs.inputspec.bet_fract_int_thr = 0.3  # feel free to adjust, a nice bet is important!
-myanatproc.inputs.inputspec.bet_vertical_gradient = -0.3 # feel free to adjust, a nice bet is important!
+myanatproc.inputs.inputspec.bet_fract_int_thr = 0.4 #0.3  # feel free to adjust, a nice bet is important!
+myanatproc.inputs.inputspec.bet_vertical_gradient = -0.1 #-0.3 # feel free to adjust, a nice bet is important!
 # try scripts/opt_bet.py to optimise these parameters
 totalWorkflow.connect(reorient_struct, 'out_file', myanatproc, 'inputspec.anat')
 
 mybbr = bbr.bbr_workflow()
-totalWorkflow.connect(reorient_struct, 'out_file', mybbr, 'inputspec.skull')
+totalWorkflow.connect(myanatproc, 'outputspec.brain', mybbr, 'inputspec.skull') #ToDo ready: rather input the brain extracted here?
 totalWorkflow.connect(reorient_func, 'out_file', mybbr, 'inputspec.func')
 totalWorkflow.connect(myanatproc, 'outputspec.probmap_wm', mybbr, 'inputspec.anat_wm_segmentation')
 totalWorkflow.connect(myanatproc, 'outputspec.probmap_csf', mybbr, 'inputspec.anat_csf_segmentation')
@@ -178,13 +178,13 @@ totalWorkflow.connect(myfuncproc, 'outputspec.FD', extract_timeseries, 'inputspe
 
 
 # compute connectivity
-measure = "partial correlation"
-mynetmat = nw.build_netmat(wf_name=measure.replace(" ", "_"))
-mynetmat.inputs.inputspec.measure = measure
+#measure = "partial correlation"
+#mynetmat = nw.build_netmat(wf_name=measure.replace(" ", "_"))
+#mynetmat.inputs.inputspec.measure = measure
 
-totalWorkflow.connect(extract_timeseries, 'outputspec.timeseries', mynetmat, 'inputspec.timeseries')
-totalWorkflow.connect(pickatlas, 'outputspec.reordered_modules', mynetmat, 'inputspec.modules')
-totalWorkflow.connect(pickatlas, 'outputspec.relabeled_atlas', mynetmat, 'inputspec.atlas')
+#totalWorkflow.connect(extract_timeseries, 'outputspec.timeseries', mynetmat, 'inputspec.timeseries')
+#totalWorkflow.connect(pickatlas, 'outputspec.reordered_modules', mynetmat, 'inputspec.modules')
+#totalWorkflow.connect(pickatlas, 'outputspec.relabeled_atlas', mynetmat, 'inputspec.atlas')
 
 # Extract timeseries
 extract_timeseries_scrubbed = tsext.extract_timeseries_nativespace(SinkTag="connectivity_scrubbed", wf_name="extract_timeseries_nativespace_scribbed")
@@ -200,13 +200,13 @@ totalWorkflow.connect(myfuncproc, 'outputspec.FD', extract_timeseries_scrubbed, 
 
 
 # compute connectivity
-measure = "partial correlation"
-mynetmat_scrubbed = nw.build_netmat(SinkTag="connectivity_scrubbed", wf_name=measure.replace(" ", "_") + "_scrubbed")
-mynetmat_scrubbed.inputs.inputspec.measure = measure
+#measure = "partial correlation"
+#mynetmat_scrubbed = nw.build_netmat(SinkTag="connectivity_scrubbed", wf_name=measure.replace(" ", "_") + "_scrubbed")
+#mynetmat_scrubbed.inputs.inputspec.measure = measure
 
-totalWorkflow.connect(extract_timeseries_scrubbed, 'outputspec.timeseries', mynetmat_scrubbed, 'inputspec.timeseries')
-totalWorkflow.connect(pickatlas, 'outputspec.reordered_modules', mynetmat_scrubbed, 'inputspec.modules')
-totalWorkflow.connect(pickatlas, 'outputspec.relabeled_atlas', mynetmat_scrubbed, 'inputspec.atlas')
+#totalWorkflow.connect(extract_timeseries_scrubbed, 'outputspec.timeseries', mynetmat_scrubbed, 'inputspec.timeseries')
+#totalWorkflow.connect(pickatlas, 'outputspec.reordered_modules', mynetmat_scrubbed, 'inputspec.modules')
+#totalWorkflow.connect(pickatlas, 'outputspec.relabeled_atlas', mynetmat_scrubbed, 'inputspec.atlas')
 
 # RUN!
 
