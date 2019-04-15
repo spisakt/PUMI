@@ -6,6 +6,7 @@ Nipype-based neuroimaging pipelines with a modular arhitecture.
 *** **Under development** ***
 
 **Installation (developer version):**
+
 pip install git+https://github.com/spisakt/PUMI.git@v0.1.1a
 
 Currtent focus:
