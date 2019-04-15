@@ -7,7 +7,7 @@
 [![GitHub release](https://img.shields.io/github/release/spisakt/PUMI.svg)](https://github.com/spisakt/PUMI/releases/)
 [![GitHub issues](https://img.shields.io/github/issues/spisakt/PUMI.svg)](https://GitHub.com/spisakt/PUMI/issues/)
 [![GitHub issues-closed](https://img.shields.io/github/issues-closed/spisakt/PUMI.svg)](https://GitHub.com/spisakt/PUMI/issues?q=is%3Aissue+is%3Aclosed)
-[![HitCount](http://hits.dwyl.io/spisakt/pTFCE.svg)](http://hits.dwyl.io/spisakt/PUMI)
+[![HitCount](http://hits.dwyl.io/spisakt/PUMI.svg)](http://hits.dwyl.io/spisakt/PUMI)
 
 Nipype-based neuroimaging pipelines with a modular arhitecture.
 
