@@ -9,6 +9,7 @@ import PUMI.utils.globals as globals
 # TODO_ready: its not really .png, its .ppm
 # HINT: you can try to put various qc images in the same folder by using the tag parameter, like e.g. in IcaAroma.py
 def vol2png(qcname, tag="", overlay=True, overlayiterated=True):
+    import PUMI.func_preproc.Onevol as onevol
 
     QCDir = os.path.abspath(globals._SinkDir_ + "/" + globals._QCDir_)
     if not os.path.exists(QCDir):
@@ -20,8 +21,15 @@ def vol2png(qcname, tag="", overlay=True, overlayiterated=True):
     inputspec = pe.Node(utility.IdentityInterface(fields=['bg_image', 'overlay_image']),
                         name='inputspec')
 
+    analysisflow = pe.Workflow(name=qcname + tag + '_qc')
+
+    myonevol_bg = onevol.onevol_workflow(wf_name="onebg")
+    analysisflow.connect(inputspec, 'bg_image', myonevol_bg, 'inputspec.func')
+
     # Create png images for quality check
     if overlay & overlayiterated:
+        myonevol_ol = onevol.onevol_workflow(wf_name="oneol")
+        analysisflow.connect(inputspec, 'overlay_image', myonevol_ol, 'inputspec.func')
         slicer = pe.MapNode(interface=fsl.Slicer(),
                         iterfield=['in_file', 'image_edges'],
                         name='slicer')
@@ -42,11 +50,9 @@ def vol2png(qcname, tag="", overlay=True, overlayiterated=True):
     ds_qc.inputs.base_directory = QCDir
     ds_qc.inputs.regexp_substitutions = [("(\/)[^\/]*$", tag + ".ppm")]
 
-    analysisflow = pe.Workflow(name=qcname + tag + '_qc')
-
-    analysisflow.connect(inputspec, 'bg_image', slicer, 'in_file')
+    analysisflow.connect(myonevol_bg, 'outputspec.func1vol', slicer, 'in_file')
     if overlay:
-        analysisflow.connect(inputspec, 'overlay_image', slicer, 'image_edges')
+        analysisflow.connect(myonevol_ol, 'outputspec.func1vol', slicer, 'image_edges')
     analysisflow.connect(slicer, 'out_file', ds_qc, qcname)
 
     return analysisflow
