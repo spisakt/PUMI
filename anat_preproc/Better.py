@@ -1,3 +1,10 @@
+def mask4D(input, mask):
+    import nibabel as nb
+
+    input=nb.load(input).get_data()
+
+
+
 def bet_workflow(Robust=True, fmri=False, SinkTag="anat_preproc", wf_name="brain_extraction"):
 
     """
@@ -38,6 +45,7 @@ def bet_workflow(Robust=True, fmri=False, SinkTag="anat_preproc", wf_name="brain
     import nipype.interfaces.io as io
     import PUMI.utils.QC as qc
     import PUMI.utils.globals as globals
+    import PUMI.func_preproc.Onevol as onevol
 
     SinkDir = os.path.abspath(globals._SinkDir_ + "/" + SinkTag)
     if not os.path.exists(SinkDir):
@@ -65,6 +73,7 @@ def bet_workflow(Robust=True, fmri=False, SinkTag="anat_preproc", wf_name="brain
     # bet.inputs.robust=Robust
     if fmri:
         bet.inputs.functional = True
+        myonevol = onevol.onevol_workflow(wf_name="onevol")
         applymask = pe.MapNode(fsl.ApplyMask(),
                                iterfield=['in_file', 'mask_file'],
                                name="apply_mask")
@@ -93,7 +102,9 @@ def bet_workflow(Robust=True, fmri=False, SinkTag="anat_preproc", wf_name="brain
     analysisflow.connect(inputspec, 'vertical_gradient', bet, 'vertical_gradient')
     analysisflow.connect(bet, 'mask_file', outputspec, 'brain_mask')
     if fmri:
-        analysisflow.connect(bet, 'mask_file', applymask, 'mask_file')
+
+        analysisflow.connect(bet, 'mask_file', myonevol, 'inputspec.func')
+        analysisflow.connect(myonevol, 'outputspec.func1vol', applymask, 'mask_file')
         analysisflow.connect(inputspec, 'in_file', applymask, 'in_file')
         analysisflow.connect(applymask, 'out_file', outputspec, 'brain')
     else:

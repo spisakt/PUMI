@@ -62,7 +62,8 @@ def get_idx(in_files,refvolnumb=1, stop_idx=None, start_idx=None):
 
     # Check to make sure the input file is 4-dimensional
     if len(shape) != 4:
-        raise TypeError('Input nifti file: %s is not a 4D file' % in_files)
+         #print('Input nifti file: %s is not a 4D file' % in_files)
+        return 0,0,0
     # Grab the number of volumes
     nvols = int(hdr.get_data_shape()[3])
     if (refvolnumb==1):
