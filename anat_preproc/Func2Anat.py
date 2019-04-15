@@ -168,10 +168,10 @@ def bbr_workflow(SinkTag="func_preproc", wf_name="func2anat"):
 
     analysisflow = pe.Workflow(name=wf_name)
     analysisflow.base_dir = '.'
-    analysisflow.connect(inputspec, 'func', linear_reg, 'in_file')
+    analysisflow.connect(inputspec, 'func', myonevol, 'inputspec.func')
+    analysisflow.connect(myonevol, 'outputspec.func1vol', linear_reg, 'in_file')
     analysisflow.connect(inputspec, 'skull',linear_reg, 'reference')
     analysisflow.connect(linear_reg, 'out_matrix_file', bbreg_func_to_anat, 'in_matrix_file')
-    analysisflow.connect(inputspec, 'func', myonevol, 'inputspec.func')
     analysisflow.connect(myonevol, 'outputspec.func1vol', bbreg_func_to_anat, 'in_file')
     analysisflow.connect(inputspec, 'anat_wm_segmentation', bbreg_arg_convert, 'bbreg_target')
     analysisflow.connect(bbreg_arg_convert, 'arg', bbreg_func_to_anat, 'args')
