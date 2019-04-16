@@ -67,7 +67,7 @@ def get_idx(in_files,refvolnumb=1, stop_idx=None, start_idx=None):
     # Grab the number of volumes
     nvols = int(hdr.get_data_shape()[3])
     if (refvolnumb==1):
-        refvolidx=1
+        refvolidx=0
     elif (refvolnumb==2):
         refvolidx=int(round(nvols/2))
     elif (refvolnumb==3):

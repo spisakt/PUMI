@@ -1,10 +1,3 @@
-def mask4D(input, mask):
-    import nibabel as nb
-
-    input=nb.load(input).get_data()
-
-
-
 def bet_workflow(Robust=True, fmri=False, SinkTag="anat_preproc", wf_name="brain_extraction"):
 
     """

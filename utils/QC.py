@@ -26,16 +26,21 @@ def vol2png(qcname, tag="", overlay=True, overlayiterated=True):
     myonevol_bg = onevol.onevol_workflow(wf_name="onebg")
     analysisflow.connect(inputspec, 'bg_image', myonevol_bg, 'inputspec.func')
 
-    if overlay:
+    if overlay and not overlayiterated:
         myonevol_ol = onevol.onevol_workflow(wf_name="oneol")
         analysisflow.connect(inputspec, 'overlay_image', myonevol_ol, 'inputspec.func')
+        slicer = pe.MapNode(interface=fsl.Slicer(),
+                            iterfield=['in_file'],
+                            name='slicer')
 
     # Create png images for quality check
-    if overlay & overlayiterated:
+    if overlay and overlayiterated:
+        myonevol_ol = onevol.onevol_workflow(wf_name="oneol")
+        analysisflow.connect(inputspec, 'overlay_image', myonevol_ol, 'inputspec.func')
         slicer = pe.MapNode(interface=fsl.Slicer(),
                         iterfield=['in_file', 'image_edges'],
                         name='slicer')
-    else:
+    if not overlay:
         slicer = pe.MapNode(interface=fsl.Slicer(),
                             iterfield=['in_file'],
                             name='slicer')

@@ -81,18 +81,18 @@ def mc_workflow_fsl(reference_vol="mid",
                               name='getRefVol')
 
     # Wraps command **mcflirt**
-    mcflirt = pe.MapNode(interface=fsl.MCFLIRT(interpolation="spline"), # stages=4), #stages 4: more accurate but slow
+    mcflirt = pe.MapNode(interface=fsl.MCFLIRT(interpolation="spline", stats_imgs=False), # stages=4), #stages 4: more accurate but slow
                          iterfield=['in_file','ref_file'], # , 'ref_vol'], # make parametrizable
                          name='mcflirt')
 
     if (reference_vol == "mean"):
-        mcflirt = pe.MapNode(interface=fsl.MCFLIRT(interpolation="spline"),
+        mcflirt = pe.MapNode(interface=fsl.MCFLIRT(interpolation="spline", stats_imgs=False),
                              # stages=4), #stages 4: more accurate but slow
                              iterfield=['in_file'],  # , 'ref_vol'], # make parametrizable
                              name='mcflirt')
         mcflirt.inputs.mean_vol = True
     else:
-        mcflirt = pe.MapNode(interface=fsl.MCFLIRT(interpolation="spline"),
+        mcflirt = pe.MapNode(interface=fsl.MCFLIRT(interpolation="spline", stats_imgs=False),
                              # stages=4), #stages 4: more accurate but slow
                              iterfield=['in_file', 'ref_file'],  # , 'ref_vol'], # make parametrizable
                              name='mcflirt')
@@ -102,7 +102,7 @@ def mc_workflow_fsl(reference_vol="mid",
     mcflirt.inputs.save_mats = True
     mcflirt.inputs.save_plots = True
     mcflirt.inputs.save_rms = True
-    mcflirt.inputs.stats_imgs = True
+    mcflirt.inputs.stats_imgs = False
 
     myqc = qc.timecourse2png("timeseries", tag="010_motioncorr")
 
