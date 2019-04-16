@@ -72,7 +72,7 @@ def plot_fmri_qc(func, atlaslabels, confounds, output_file=None):
         tr = img_nii.header.get_zooms()[-1]
         ntsteps = func_data.shape[-1]
 
-        data = func_data[atlaslabels > 0].reshape(-1, ntsteps)
+        data = func_data.reshape(-1, ntsteps)#[atlaslabels > 0].reshape(-1, ntsteps)
         seg = atlaslabels[atlaslabels > 0].reshape(-1)
 
         # Map segmentation

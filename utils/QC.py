@@ -27,8 +27,8 @@ def vol2png(qcname, tag="", overlay=True, overlayiterated=True):
     analysisflow.connect(inputspec, 'bg_image', myonevol_bg, 'inputspec.func')
 
     if overlay and not overlayiterated:
-        myonevol_ol = onevol.onevol_workflow(wf_name="oneol")
-        analysisflow.connect(inputspec, 'overlay_image', myonevol_ol, 'inputspec.func')
+        #myonevol_ol = onevol.onevol_workflow(wf_name="oneol")
+        #analysisflow.connect(inputspec, 'overlay_image', myonevol_ol, 'inputspec.func')
         slicer = pe.MapNode(interface=fsl.Slicer(),
                             iterfield=['in_file'],
                             name='slicer')
@@ -58,7 +58,9 @@ def vol2png(qcname, tag="", overlay=True, overlayiterated=True):
     ds_qc.inputs.regexp_substitutions = [("(\/)[^\/]*$", tag + ".ppm")]
 
     analysisflow.connect(myonevol_bg, 'outputspec.func1vol', slicer, 'in_file')
-    if overlay:
+    if overlay and not overlayiterated:
+        analysisflow.connect(inputspec, 'overlay_image', slicer, 'image_edges')
+    if overlay and overlayiterated:
         analysisflow.connect(myonevol_ol, 'outputspec.func1vol', slicer, 'image_edges')
     analysisflow.connect(slicer, 'out_file', ds_qc, qcname)
 
