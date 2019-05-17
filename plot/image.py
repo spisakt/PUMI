@@ -8,7 +8,7 @@ def plot_fmri_qc(func, atlaslabels, confounds, output_file=None):
     import pandas as pd
     import os
 
-    def plot_carpet(img, atlaslabels, detrend=True, nskip=0, size=(950, 800),
+    def plot_carpet(img, atlaslabels, detrend=True, nskip=0, size=(4000, 3000),
                     subplot=None, title=None, output_file=None, legend=False,
                     lut=None):
         """
@@ -95,13 +95,13 @@ def plot_fmri_qc(func, atlaslabels, confounds, output_file=None):
         newsegm = lut[seg.astype(int)]
 
         p_dec = 1 + data.shape[0] // size[0]
-        if p_dec:
-            data = data[::p_dec, :]
-            newsegm = newsegm[::p_dec]
+        #if p_dec:
+        #    data = data[::p_dec, :]
+        #    newsegm = newsegm[::p_dec]
 
-        t_dec = 1 + data.shape[1] // size[1]
-        if t_dec:
-            data = data[:, ::t_dec]
+        #t_dec = 1 + data.shape[1] // size[1]
+        #if t_dec:
+        #    data = data[:, ::t_dec]
 
         # Detrend data
         v = (None, None)
@@ -137,6 +137,9 @@ def plot_fmri_qc(func, atlaslabels, confounds, output_file=None):
 
         # Carpet plot
         ax1 = plt.subplot(gs[1])
+        print("*****************************************************************************************************")
+        print(order)
+        print(data.shape)
         ax1.imshow(data[order, ...], interpolation='nearest', aspect='auto', cmap='gray',
                    vmin=v[0], vmax=v[1])
 
@@ -406,7 +409,7 @@ def plot_fmri_qc(func, atlaslabels, confounds, output_file=None):
             tseries, grid[grid_id], color=palette[i], **kwargs)
         grid_id += 1
 
-    plot_carpet(func, atlaslabels, subplot=grid[-1], detrend=True)
+    #plot_carpet(func, atlaslabels, subplot=grid[-1], detrend=True)
 
     if output_file is not None:
         figure = plt.gcf()
