@@ -107,7 +107,8 @@ def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation"):
     analysisflow.base_dir = '.'
     analysisflow.connect(inputspec, 'brain', fast, 'in_files')
     analysisflow.connect(inputspec, 'stand2anat_xfm',fast, 'init_transform')
-    analysisflow.connect(inputspec, 'priorprob', fast,'other_priors')
+    if not inputspec.inputs.priorprob
+        analysisflow.connect(inputspec, 'priorprob', fast,'other_priors')
     # analysisflow.connect(inputspec, 'stand_csf' ,fast,('other_priors', pickindex, 0))
     # analysisflow.connect(inputspec, 'stand_gm' ,fast,('other_priors', pickindex, 1))
     # analysisflow.connect(inputspec, 'stand_wm' ,fast,('other_priors', pickindex, 2))
