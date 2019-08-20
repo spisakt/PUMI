@@ -70,7 +70,7 @@ def AnatProc(stdreg, SinkTag="anat_preproc", wf_name="anatproc"):
     # build the actual pipeline
     mybet = bet.bet_workflow()
     myfast = fast.fast_workflow()
-    myfast.get_node("inputspec").iterables.inputs.priorprob=[] # switch off prior probmaps
+    myfast.get_node("inputspec").inputs.priorprob=[] # switch off prior probmaps
     # ToDo make settable
 
     if stdreg==globals._RegType_.FSL:
