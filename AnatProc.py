@@ -131,8 +131,8 @@ def AnatProc(stdreg, SinkTag="anat_preproc", wf_name="anatproc"):
           ('bet_vertical_gradient', 'inputspec.vertical_gradient')]),
         (mybet, myfast,
          [('outputspec.brain', 'inputspec.brain')]),
-        (myanat2mni, myfast,
-         [('outputspec.invlinear_xfm','inputspec.stand2anat_xfm')]),
+        #(myanat2mni, myfast,
+        # [('outputspec.invlinear_xfm','inputspec.stand2anat_xfm')]), # this uses no propr right now ToDo: make settable
         (mybet, myanat2mni,
          [('outputspec.brain', 'inputspec.brain')]),
         (inputspec, myanat2mni,

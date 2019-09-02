@@ -52,7 +52,7 @@ def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation"):
 
     #Basic interface class generates identity mappings
     inputspec = pe.Node(utility.IdentityInterface(fields=['brain',
-                                                           'stand2anat_xfm',
+                                                           'stand2anat_xfm', # leave empty for no prior
                                                            'priorprob'
                                                           ]),
                         name='inputspec')
