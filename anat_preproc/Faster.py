@@ -1,4 +1,4 @@
-def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation"):
+def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation", priormap=True):
     """
 
      Modified version of CPAC.seg_preproc.seg_preproc
@@ -60,21 +60,30 @@ def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation"):
 
     #TODO_ready set standard mask to 2mm
 
-    inputspec.inputs.priorprob=[globals._FSLDIR_ + '/data/standard/tissuepriors/avg152T1_csf.hdr',
-                                globals._FSLDIR_ + '/data/standard/tissuepriors/avg152T1_gray.hdr',
-                                globals._FSLDIR_ + '/data/standard/tissuepriors/avg152T1_white.hdr']
+    if priormap:
+        inputspec.inputs.priorprob=[globals._FSLDIR_ + '/data/standard/tissuepriors/avg152T1_csf.hdr',
+                                    globals._FSLDIR_ + '/data/standard/tissuepriors/avg152T1_gray.hdr',
+                                    globals._FSLDIR_ + '/data/standard/tissuepriors/avg152T1_white.hdr']
 
 
     # TODO_ready: use prior probabilioty maps
     # Wraps command **fast**
-    fast = pe.MapNode(interface=fsl.FAST(),
+    if priormap:
+        fast = pe.MapNode(interface=fsl.FAST(),
                       iterfield=['in_files',
                                   'init_transform'
                                  ],
                       name='fast')
+    else:
+        fast = pe.MapNode(interface=fsl.FAST(),
+                          iterfield=['in_files'
+                                     ],
+                          name='fast')
+
     fast.inputs.img_type = 1
     fast.inputs.segments = True
-    fast.inputs.probability_maps = True
+    if priormap:
+        fast.inputs.probability_maps = True
     fast.inputs.out_basename = 'fast_'
 
     myqc = qc.vol2png("tissue_segmentation", overlay=False)
@@ -106,8 +115,8 @@ def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation"):
     analysisflow = nipype.Workflow(wf_name)
     analysisflow.base_dir = '.'
     analysisflow.connect(inputspec, 'brain', fast, 'in_files')
-    analysisflow.connect(inputspec, 'stand2anat_xfm',fast, 'init_transform')
-    if not inputspec.inputs.priorprob:
+    if priormap:
+        analysisflow.connect(inputspec, 'stand2anat_xfm',fast, 'init_transform')
         analysisflow.connect(inputspec, 'priorprob', fast,'other_priors')
     # analysisflow.connect(inputspec, 'stand_csf' ,fast,('other_priors', pickindex, 0))
     # analysisflow.connect(inputspec, 'stand_gm' ,fast,('other_priors', pickindex, 1))
