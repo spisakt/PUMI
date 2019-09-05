@@ -82,8 +82,7 @@ def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation", priorma
 
     fast.inputs.img_type = 1
     fast.inputs.segments = True
-    if priormap:
-        fast.inputs.probability_maps = True
+    fast.inputs.probability_maps = True
     fast.inputs.out_basename = 'fast_'
 
     myqc = qc.vol2png("tissue_segmentation", overlay=False)
