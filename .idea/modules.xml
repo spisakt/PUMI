@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../PAINTeR/.idea/PAINTeR.iml" filepath="$PROJECT_DIR$/../PAINTeR/.idea/PAINTeR.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/PUMI.iml" filepath="$PROJECT_DIR$/.idea/PUMI.iml" />
     </modules>
   </component>

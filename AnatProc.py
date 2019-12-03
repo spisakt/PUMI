@@ -69,7 +69,7 @@ def AnatProc(stdreg, SinkTag="anat_preproc", wf_name="anatproc"):
 
     # build the actual pipeline
     mybet = bet.bet_workflow()
-    myfast = fast.fast_workflow(priormap=False) # this uses no propr right now ToDo: make settable
+    myfast = fast.fast_workflow(priormap=True)  # this uses no prior map right now ToDo: make it settable
 
     if stdreg==globals._RegType_.FSL:
         myanat2mni = anat2mni.anat2mni_fsl_workflow()

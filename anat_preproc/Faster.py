@@ -116,7 +116,8 @@ def fast_workflow(SinkTag="anat_preproc", wf_name="tissue_segmentation", priorma
     analysisflow.connect(inputspec, 'brain', fast, 'in_files')
     if priormap:
         analysisflow.connect(inputspec, 'stand2anat_xfm',fast, 'init_transform')
-        analysisflow.connect(inputspec, 'priorprob', fast,'other_priors')
+        #analysisflow.connect(inputspec, 'priorprob', fast,'other_priors')
+        # commented out for compatibility with the original RPN-signature
     # analysisflow.connect(inputspec, 'stand_csf' ,fast,('other_priors', pickindex, 0))
     # analysisflow.connect(inputspec, 'stand_gm' ,fast,('other_priors', pickindex, 1))
     # analysisflow.connect(inputspec, 'stand_wm' ,fast,('other_priors', pickindex, 2))
