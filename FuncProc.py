@@ -320,8 +320,6 @@ def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc", wf_name="func_
 
     if fwhm > 0:
         wf_mc.connect([
-            (mynuisscor, mytmpfilt, [('outputspec.out_file', 'inputspec.func')]),
-
             (mynuisscor, smoother, [('outputspec.out_file', 'in_file')]),
             (smoother, mytmpfilt, [('smoothed_file', 'inputspec.func')]),
 
