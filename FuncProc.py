@@ -16,6 +16,7 @@ import nipype.interfaces.utility as utility
 import nipype.interfaces.afni as afni
 import nipype.interfaces.fsl as fsl
 import PUMI.utils.globals as globals
+from nipype.interfaces.fsl import Smooth
 
 import os
 
@@ -190,7 +191,7 @@ def FuncProc_cpac(stdrefvol="mid",SinkTag="func_preproc", wf_name="funcproc"):
 
     return wf_mc
 
-def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc", wf_name="func_preproc_dspk_afni", carpet_plot=""):
+def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc", wf_name="func_preproc_dspk_afni", fwhm=0, carpet_plot=""):
     """
         Performs processing of functional (resting-state) images:
 
@@ -264,6 +265,18 @@ def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc", wf_name="func_
         wf_mc.connect(mymc, 'outputspec.FD_file', fmri_qc_mc_dspk_nuis, 'inputspec.confounds')
         wf_mc.connect(mynuisscor, 'outputspec.out_file', fmri_qc_mc_dspk_nuis, 'inputspec.func')
 
+    # optional smoother:
+    if fwhm > 0:
+        smoother = pe.MapNode(interface=Smooth(fwhm=fwhm),
+                              iterfield=['in_file'],
+                              name="smoother")
+        if carpet_plot:
+            fmri_qc_mc_dspk_smooth_nuis_bpf = qc.fMRI2QC(carpet_plot, tag="mc_dspk_nuis_smooth", indiv_atlas=True)
+            wf_mc.connect(add_masks, 'out_file', fmri_qc_mc_dspk_smooth_nuis_bpf, 'inputspec.atlas')
+            wf_mc.connect(mymc, 'outputspec.FD_file', fmri_qc_mc_dspk_smooth_nuis_bpf, 'inputspec.confounds')
+            wf_mc.connect(smoother, 'smoothed_file', fmri_qc_mc_dspk_smooth_nuis_bpf, 'inputspec.func')
+
+
     #mymedangcor = medangcor.mac_workflow() #skip it this time
     mytmpfilt = tmpfilt.tmpfilt_workflow(highpass_Hz=0.008, lowpass_Hz=0.08) #will be done by the masker?
 
@@ -302,15 +315,34 @@ def FuncProc_despike_afni(stdrefvol="mid",SinkTag="func_preproc", wf_name="func_
         (mycmpcor,myconc, [('outputspec.components_file','inputspec.par1')]),
         (mymc, myconc, [('outputspec.first24_file', 'inputspec.par2')]),
         (myconc,mynuisscor, [('outputspec.concat_file', 'inputspec.design_file')]),
-        (mydespike, mynuisscor, [('out_file', 'inputspec.in_file')]),
-        (mynuisscor,mytmpfilt,[('outputspec.out_file','inputspec.func')]),
-        (mytmpfilt, myscrub, [('outputspec.func_tmplfilt', 'inputspec.func')]),
-        (mymc, myscrub, [('outputspec.FD_file', 'inputspec.FD')]),
+        (mydespike, mynuisscor, [('out_file', 'inputspec.in_file')])
+    ])
 
-        (mytmpfilt,outputspec,[('outputspec.func_tmplfilt','func_preprocessed')]),
+    if fwhm > 0:
+        wf_mc.connect([
+            (mynuisscor, mytmpfilt, [('outputspec.out_file', 'inputspec.func')]),
+
+            (mynuisscor, smoother, [('outputspec.out_file', 'in_file')]),
+            (smoother, mytmpfilt, [('smoothed_file', 'inputspec.func')]),
+
+            (mytmpfilt, myscrub, [('outputspec.func_tmplfilt', 'inputspec.func')]),
+            (mymc, myscrub, [('outputspec.FD_file', 'inputspec.FD')]),
+
+            (mytmpfilt, outputspec, [('outputspec.func_tmplfilt', 'func_preprocessed')])
+        ])
+    else:
+        wf_mc.connect([
+            (mynuisscor, mytmpfilt, [('outputspec.out_file', 'inputspec.func')]),
+            (mytmpfilt, myscrub, [('outputspec.func_tmplfilt', 'inputspec.func')]),
+            (mymc, myscrub, [('outputspec.FD_file', 'inputspec.FD')]),
+
+            (mytmpfilt, outputspec, [('outputspec.func_tmplfilt', 'func_preprocessed')])
+        ])
+
+    wf_mc.connect([
         # non-image data:
         (mymc, outputspec, [('outputspec.FD_file', 'FD')]),
         (myscrub, outputspec, [('outputspec.scrubbed_image', 'func_preprocessed_scrubbed')]),
-                   ])
+    ])
 
     return wf_mc
